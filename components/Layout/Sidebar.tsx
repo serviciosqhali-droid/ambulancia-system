@@ -5,6 +5,7 @@ import {
   Users,
   Siren,
   Truck,
+  BriefcaseMedical,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -41,6 +42,11 @@ export default function Sidebar() {
         >
           <Users />
           Pacientes
+        </Link>
+
+        <Link href="/servicios" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-red-100" > 
+        <BriefcaseMedical size={20} /> 
+        Servicios 
         </Link>
 
         <Link

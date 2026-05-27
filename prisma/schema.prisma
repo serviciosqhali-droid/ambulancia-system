@@ -24,4 +24,24 @@ model Emergencia {
   ubicacion     String
   ambulancia    String
   createdAt     DateTime @default(now())
+} 
+
+model Servicio {
+  id              Int       @id @default(autoincrement())
+  paciente        String
+  tipoServicio    String
+  origen          String
+  destinos        Json
+  prioridad       String?
+  ambulancia      String?
+  observaciones   String?
+  contacto        String?
+  telefono        String?
+  email           String?
+  costo           Float?
+  metodoPago      String?
+  estado          String?
+  fechaHora       DateTime?
+  notas           String?
+  createdAt       DateTime  @default(now())
 }
