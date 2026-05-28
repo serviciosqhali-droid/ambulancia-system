@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Paciente {
@@ -16,6 +16,7 @@ model Paciente {
   direccion        String
   createdAt        DateTime @default(now())
 }
+
 model Emergencia {
   id            Int      @id @default(autoincrement())
   paciente      String
@@ -27,21 +28,41 @@ model Emergencia {
 } 
 
 model Servicio {
-  id              Int       @id @default(autoincrement())
-  paciente        String
-  tipoServicio    String
-  origen          String
-  destinos        Json
-  prioridad       String?
-  ambulancia      String?
-  observaciones   String?
-  contacto        String?
-  telefono        String?
-  email           String?
-  costo           Float?
-  metodoPago      String?
-  estado          String?
-  fechaHora       DateTime?
-  notas           String?
-  createdAt       DateTime  @default(now())
+  id                 Int       @id @default(autoincrement())
+  paciente           String
+  edad               Int?
+  peso               Float?
+  tipoServicio       String
+  origen             String
+  referencia         String?
+  destinos           String    // Guardará el array de destinos en formato JSON stringificado
+  esIdaYVuelta       Boolean?  @default(false)
+  diagnostico        String?
+  enfermedadFondo    String?
+  sintomas           String?
+  tratamientoActual  String?
+  requiereOxigeno    String?   @default("No")
+  litrosOxigeno      Float?
+  prioridad          String?
+  ambulancia         String?
+  observaciones      String?
+  contacto           String?
+  telefono           String?   // Guardará los teléfonos como string (o concatenados si hay varios)
+  email              String?
+  costo              Float?
+  metodoPago         String?
+  estado             String?
+  fechaHora          DateTime?
+  notas              String?
+  createdAt          DateTime  @default(now())
 }
+
+model Ambulancia {
+  id        Int      @id @default(autoincrement())
+  placa     String   @unique
+  modelo    String
+  tipo      String   // E.g., Tipo I, Tipo II, Tipo III, SAMU
+  estado    String   // E.g., Disponible, En Servicio, Mantenimiento
+  createdAt DateTime @default(now())
+}
+

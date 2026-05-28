@@ -1,186 +1,109 @@
 import prisma from "@/lib/prisma";
 import DashboardLayout from "@/components/Layout/DashboardLayout";
+import ServiciosList from "@/components/ServiciosList";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 
 export default async function ServiciosPage() {
+  // 1. Obtener estadísticas dinámicas de la base de datos
+  const totalServicios = await prisma.servicio.count();
+  
+  const enCurso = await prisma.servicio.count({
+    where: {
+      estado: "En Curso",
+    },
+  });
 
-const servicios = await prisma.servicio.findMany({
-  orderBy: {
-    createdAt: "desc",
-  },
-});
+  const traslados = await prisma.servicio.count({
+    where: {
+      tipoServicio: "Traslado",
+    },
+  });
+
+  const ingresosResult = await prisma.servicio.aggregate({
+    where: {
+      estado: "Completado",
+    },
+    _sum: {
+      costo: true,
+    },
+  });
+  
+  const ingresos = ingresosResult._sum.costo || 0;
+
+  // 2. Obtener todos los servicios ordenados por fecha de creación descendente
+  const servicios = await prisma.servicio.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // Mapeamos los servicios a un formato plano compatible para pasar al Client Component
+  const serviciosFormateados = servicios.map((s) => ({
+    ...s,
+    // Convertir fechas a string de forma segura para evitar problemas de serialización en Server Components
+    createdAt: s.createdAt.toISOString(),
+    fechaHora: s.fechaHora ? s.fechaHora.toISOString() : null,
+  }));
 
   return (
-
     <DashboardLayout>
-
-      <div className="flex items-center justify-between">
-
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-
-          <h1 className="text-4xl font-bold text-gray-800">
+          <h1 className="text-4xl font-extrabold text-gray-800">
             Servicios
           </h1>
-
           <p className="text-gray-500 mt-2">
-            Gestión de todos los servicios registrados
+            Gestión y despacho integral de traslados y alquileres.
           </p>
-
         </div>
 
-        <button
-          className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl"
+        <Link
+          href="/nuevo-servicio"
+          className="bg-red-600 hover:bg-red-500 text-white px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-red-100 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
+          <Plus size={20} />
           Nuevo Servicio
-        </button>
-
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10">
-
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <p className="text-gray-500">
-            Total servicios
-          </p>
-
-          <h2 className="text-4xl font-bold mt-4">
-            5
+      {/* Tarjetas de Resumen Operativo de Servicios */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Total Servicios</p>
+          <h2 className="text-4xl font-black mt-4 text-gray-800">
+            {totalServicios}
           </h2>
-
+          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados en historial</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <p className="text-gray-500">
-            En curso
-          </p>
-
-          <h2 className="text-4xl font-bold mt-4 text-orange-500">
-            1
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">En Curso</p>
+          <h2 className="text-4xl font-black mt-4 text-orange-500">
+            {enCurso}
           </h2>
-
-          <p className="text-sm text-gray-400 mt-2">
-            activos ahora
-          </p>
-
+          <p className="text-xs text-gray-400 mt-2 font-medium">Activos en este momento</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <p className="text-gray-500">
-            Traslados
-          </p>
-
-          <h2 className="text-4xl font-bold mt-4">
-            3
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Traslados</p>
+          <h2 className="text-4xl font-black mt-4 text-blue-600">
+            {traslados}
           </h2>
-
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados asistidos</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-6">
-
-          <p className="text-gray-500">
-            Ingresos
-          </p>
-
-          <h2 className="text-4xl font-bold mt-4 text-green-600">
-            S/. 2,030
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Ingresos Totales</p>
+          <h2 className="text-3xl font-black mt-4 text-green-600">
+            S/. {ingresos.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </h2>
-
+          <p className="text-xs text-gray-400 mt-2 font-medium">Servicios completados</p>
         </div>
-
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 mt-10">
-
-        <div className="flex flex-col md:flex-row gap-4 justify-between">
-
-          <input
-            type="text"
-            placeholder="Buscar por paciente, evento, ID o contacto..."
-            className="border border-gray-300 rounded-xl px-4 py-3 w-full md:w-[400px]"
-          />
-
-          <div className="flex gap-4">
-
-            <button
-              className="border border-gray-300 px-4 py-3 rounded-xl"
-            >
-              Filtros
-            </button>
-
-            <select
-              className="border border-gray-300 rounded-xl px-4 py-3"
-            >
-              <option>Fecha</option>
-              <option>Costo</option>
-              <option>ID</option>
-            </select>
-
-          </div>
-
-        </div>
-
-        <p className="text-gray-500 mt-6">
-          5 servicios encontrados
-        </p>
-
-        <div className="space-y-6 mt-8">
-
-          {servicios.map((servicio: any) => (
-
-            <div key={servicio.id} 
-            className="bg-white border border-gray-200 rounded-2xl p-6" > 
-            <div className="flex items-start justify-between"> 
-                <div className="flex gap-4"> 
-                    <div className="bg-orange-100 p-3 rounded-2xl"> 🚑 
-                        </div> 
-                        <div> 
-                            <div className="flex items-center gap-3 flex-wrap"> 
-                                <h2 className="text-2xl font-bold text-gray-800"> 
-                                    {servicio.paciente} </h2> 
-                                    <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm"> 
-                                        {servicio.tipoServicio} </span> 
-                                        <span className={` px-3 py-1 rounded-full text-sm ${ 
-                                        servicio.estado === "En Curso" ? "bg-yellow-100 text-yellow-700" : 
-                                        servicio.estado === "Confirmado" ? "bg-blue-100 text-blue-700" : 
-                                        servicio.estado === "Completado" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700" } `} > 
-                                        {servicio.estado} 
-                                        </span> </div> 
-                                        <p className="text-gray-500 mt-3"> Recojo: 
-                                            {servicio.origen} </p> 
-                                            <div className="flex flex-wrap gap-6 mt-5 text-sm text-gray-500"> 
-                                                <span> SRV-{servicio.id} </span> 
-                                                <span> 👤 {servicio.contacto} </span> 
-                                                <span> 📞 {servicio.telefono} </span> 
-                                                <span> 📍 {servicio.destino} </span> 
-                                                </div> 
-                                                </div> 
-                                                </div> 
-                                                <div className="flex flex-col items-end"> 
-                                                    <div className="text-right"> 
-                                                        <p className="text-2xl font-bold text-green-600"> S/. {servicio.costo} 
-                                                            </p> 
-                                                        <p className="text-sm text-gray-500 mt-2"> 
-                                                            { new Date( servicio.createdAt ).toLocaleDateString() } 
-                                                            </p> 
-                                                            </div> <div className="flex gap-3 mt-6"> 
-                                                                <button className="border border-gray-300 px-4 py-2 rounded-xl hover:bg-gray-100" >
-                                                                    👁 Ver </button> 
-                                                                <button className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl" > ✏️ Editar 
-                                                                    </button> 
-                                                                    </div> 
-                                                                    </div> 
-                                                                    </div> 
-                                                                    </div>       
-
-          ))}
-
-        </div>
-
-      </div>
-
+      {/* Renderizado de la lista interactiva de Servicios */}
+      <ServiciosList initialServicios={serviciosFormateados as any} />
     </DashboardLayout>
-
   );
 }
