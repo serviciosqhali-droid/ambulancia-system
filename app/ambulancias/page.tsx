@@ -81,7 +81,7 @@ export default function AmbulanciasPage() {
         const errData = await res.json();
         setError(errData.error || "Ocurrió un error al registrar la ambulancia.");
       }
-    } catch (err) {
+    } catch {
       setError("Error de conexión. Intente nuevamente.");
     }
   }

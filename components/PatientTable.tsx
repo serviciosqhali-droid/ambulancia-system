@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 interface Paciente {
   id: number;
   nombres: string;
-  dni: string;
+  tipoDocumento: string;
+  numeroDocumento: string;
   telefono: string;
   direccion: string;
 }
@@ -17,18 +18,46 @@ export default function PatientTable({
 }) {
 
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
-
-  async function obtenerPacientes() {
-    const response = await fetch("/api/pacientes");
-
-    const data = await response.json();
-
-    setPacientes(data);
-  }
+  const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    obtenerPacientes();
-}, [refresh]);
+    let ignore = false;
+
+    fetch("/api/pacientes")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("No se pudo cargar pacientes");
+        }
+        return response.json();
+      })
+      .then((data: Paciente[]) => {
+        if (!ignore) {
+          setPacientes(data);
+          setError("");
+        }
+      })
+      .catch((err) => {
+        console.error("Error al obtener pacientes", err);
+        if (!ignore) {
+          setError("No se pudo cargar la lista de pacientes.");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [refresh]);
+
+  const pacientesFiltrados = pacientes.filter((paciente) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      paciente.nombres.toLowerCase().includes(term) ||
+      paciente.numeroDocumento.toLowerCase().includes(term) ||
+      paciente.telefono.toLowerCase().includes(term) ||
+      paciente.direccion.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="bg-white rounded-2xl shadow p-6 mt-8">
@@ -38,12 +67,14 @@ export default function PatientTable({
         <input
           type="text"
           placeholder="Buscar paciente..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="border border-gray-300 rounded-xl px-4 py-2 w-80 outline-none"
         />
 
-        <button className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-xl">
-          + Nuevo Paciente
-        </button>
+        <span className="text-sm font-medium text-gray-400">
+          {pacientesFiltrados.length} pacientes
+        </span>
 
       </div>
 
@@ -61,7 +92,7 @@ export default function PatientTable({
             </th>
 
             <th>
-              DNI
+              Documento
             </th>
 
             <th>
@@ -77,7 +108,20 @@ export default function PatientTable({
 
         <tbody>
 
-          {pacientes.map((paciente) => (
+          {error ? (
+            <tr>
+              <td colSpan={5} className="py-8 text-center text-red-600">
+                {error}
+              </td>
+            </tr>
+          ) : pacientesFiltrados.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="py-8 text-center text-gray-400">
+                No se encontraron pacientes.
+              </td>
+            </tr>
+          ) : (
+          pacientesFiltrados.map((paciente) => (
             <tr
               key={paciente.id}
               className="border-b hover:bg-gray-50"
@@ -92,7 +136,7 @@ export default function PatientTable({
               </td>
 
               <td>
-                {paciente.dni}
+                {paciente.tipoDocumento} {paciente.numeroDocumento}
               </td>
 
               <td>
@@ -104,7 +148,7 @@ export default function PatientTable({
               </td>
 
             </tr>
-          ))}
+          )))}
 
         </tbody>
 

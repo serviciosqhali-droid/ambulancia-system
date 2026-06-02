@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -14,7 +15,7 @@ export async function PUT(
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
 
-    const data: any = {};
+    const data: Prisma.AmbulanciaUpdateInput = {};
     if (body.placa !== undefined) data.placa = body.placa.trim().toUpperCase();
     if (body.modelo !== undefined) data.modelo = body.modelo.trim();
     if (body.tipo !== undefined) data.tipo = body.tipo.trim();
@@ -26,11 +27,24 @@ export async function PUT(
     });
 
     return NextResponse.json(ambulanciaActualizada);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error actualizando ambulancia:", error);
     
-    if (error.code === "P2025") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
       return NextResponse.json({ error: "Ambulancia no encontrada" }, { status: 404 });
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "Ya existe una ambulancia registrada con esa placa" },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json(
@@ -57,10 +71,13 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true, message: "Ambulancia eliminada con éxito" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error eliminando ambulancia:", error);
 
-    if (error.code === "P2025") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
       return NextResponse.json({ error: "Ambulancia no encontrada" }, { status: 404 });
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Truck } from "lucide-react";
 
 interface Props {
@@ -75,8 +75,11 @@ export default function PasoContactoCosto({
   setObservaciones,
 }: Props) {
   const [ambulanciasDisponibles, setAmbulanciasDisponibles] = useState<Ambulancia[]>([]);
-  const [total, setTotal] = useState(0);
   const [mensajeWhatsapp, setMensajeWhatsapp] = useState("");
+  const total = useMemo(() => {
+    const monto = Number(costo) || 0;
+    return metodoPago === "Tarjeta" ? monto * 1.05 : monto;
+  }, [costo, metodoPago]);
 
   // Cargar ambulancias desde la API
   useEffect(() => {
@@ -84,15 +87,10 @@ export default function PasoContactoCosto({
       try {
         const res = await fetch("/api/ambulancias");
         if (res.ok) {
-          const data = await res.json();
-          // Filtrar preferiblemente las disponibles, o mostrar todas indicando su estado
-          setAmbulanciasDisponibles(data);
-          
-          // Si no hay ambulancia seleccionada, elegir la primera disponible por defecto
-          if (!ambulancia && data.length > 0) {
-            const disponible = data.find((a: Ambulancia) => a.estado === "Disponible");
-            setAmbulancia(disponible ? disponible.placa : data[0].placa);
-          }
+          const data: Ambulancia[] = await res.json();
+          setAmbulanciasDisponibles(
+            data.filter((amb) => amb.estado === "Disponible")
+          );
         }
       } catch (err) {
         console.error("Error al cargar ambulancias en el stepper", err);
@@ -101,23 +99,14 @@ export default function PasoContactoCosto({
     loadAmbulancias();
   }, []);
 
-  // Calcular total con recargo por tarjeta (5%)
-  useEffect(() => {
-    const monto = Number(costo) || 0;
-    if (metodoPago === "Tarjeta") {
-      const recargo = monto * 0.05;
-      setTotal(monto + recargo);
-    } else {
-      setTotal(monto);
-    }
-  }, [costo, metodoPago]);
-
   // Establecer fecha por defecto si está vacía
   useEffect(() => {
     if (!fechaHora) {
       const ahora = new Date();
-      // Formato YYYY-MM-DDThh:mm
-      const fecha = ahora.toISOString().slice(0, 16);
+      const offsetLocal = ahora.getTimezoneOffset() * 60000;
+      const fecha = new Date(ahora.getTime() - offsetLocal)
+        .toISOString()
+        .slice(0, 16);
       setFechaHora(fecha);
     }
   }, [fechaHora, setFechaHora]);
@@ -183,10 +172,15 @@ ${destinos
             <option value="">-- Seleccionar Ambulancia --</option>
             {ambulanciasDisponibles.map((amb) => (
               <option key={amb.id} value={amb.placa}>
-                {amb.placa} - {amb.modelo} ({amb.estado})
+                {amb.placa} - {amb.modelo}
               </option>
             ))}
           </select>
+          {ambulanciasDisponibles.length === 0 && (
+            <p className="mt-2 text-sm font-medium text-red-600">
+              No hay ambulancias disponibles para asignar.
+            </p>
+          )}
         </div>
 
         <div>

@@ -18,18 +18,34 @@ export default function EmergencyTable({
 }) {
 
   const [emergencias, setEmergencias] = useState<Emergencia[]>([]);
-
-  async function obtenerEmergencias() {
-
-    const response = await fetch("/api/emergencias");
-
-    const data = await response.json();
-
-    setEmergencias(data);
-  }
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    obtenerEmergencias();
+    let ignore = false;
+
+    fetch("/api/emergencias")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("No se pudo cargar emergencias");
+        }
+        return response.json();
+      })
+      .then((data: Emergencia[]) => {
+        if (!ignore) {
+          setEmergencias(data);
+          setError("");
+        }
+      })
+      .catch((err) => {
+        console.error("Error al obtener emergencias", err);
+        if (!ignore) {
+          setError("No se pudo cargar la lista de emergencias.");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [refresh]);
 
   function colorPrioridad(prioridad: string) {
@@ -84,7 +100,20 @@ export default function EmergencyTable({
 
         <tbody>
 
-          {emergencias.map((emergencia) => (
+          {error ? (
+            <tr>
+              <td colSpan={5} className="py-8 text-center text-red-600">
+                {error}
+              </td>
+            </tr>
+          ) : emergencias.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="py-8 text-center text-gray-400">
+                No se encontraron emergencias.
+              </td>
+            </tr>
+          ) : (
+          emergencias.map((emergencia) => (
 
             <tr
               key={emergencia.id}
@@ -119,7 +148,7 @@ export default function EmergencyTable({
 
             </tr>
 
-          ))}
+          )))}
 
         </tbody>
 

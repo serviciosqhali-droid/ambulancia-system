@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { 
   Search, 
-  MapPin, 
   User, 
   Phone, 
   Eye, 
-  Edit3, 
   Calendar,
   AlertCircle
 } from "lucide-react";
@@ -82,7 +80,7 @@ export default function ServiciosList({ initialServicios }: Props) {
       const parsed = JSON.parse(destinosStr);
       if (Array.isArray(parsed)) return parsed;
       return [destinosStr];
-    } catch (e) {
+    } catch {
       return [destinosStr];
     }
   }

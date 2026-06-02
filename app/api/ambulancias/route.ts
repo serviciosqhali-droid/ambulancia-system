@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
@@ -39,11 +40,14 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(nuevaAmbulancia, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error registrando ambulancia:", error);
     
     // Controlar duplicado de placa
-    if (error.code === "P2002") {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
       return NextResponse.json(
         { error: "Ya existe una ambulancia registrada con esa placa" },
         { status: 400 }

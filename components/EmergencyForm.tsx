@@ -1,40 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 
 export default function EmergencyForm({
   onSaved,
 }: {
   onSaved: () => void;
 }) {
-
   const [paciente, setPaciente] = useState("");
   const [prioridad, setPrioridad] = useState("Alta");
   const [estado, setEstado] = useState("Pendiente");
   const [ubicacion, setUbicacion] = useState("");
   const [ambulancia, setAmbulancia] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  async function guardarEmergencia() {
+  async function guardarEmergencia(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setSaving(true);
 
-    await fetch("/api/emergencias", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        paciente,
-        prioridad,
-        estado,
-        ubicacion,
-        ambulancia,
-      }),
-    });
+    try {
+      const response = await fetch("/api/emergencias", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paciente,
+          prioridad,
+          estado,
+          ubicacion,
+          ambulancia,
+        }),
+      });
 
-    onSaved();
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "No se pudo registrar la emergencia.");
+        return;
+      }
 
-    setPaciente("");
-    setUbicacion("");
-    setAmbulancia("");
+      onSaved();
+      setPaciente("");
+      setUbicacion("");
+      setAmbulancia("");
+    } catch (err) {
+      console.error("Error de conexión al guardar emergencia", err);
+      setError("Error de conexión. Intente nuevamente.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -44,7 +60,14 @@ export default function EmergencyForm({
         Nueva Emergencia
       </h2>
 
-      <div className="grid grid-cols-2 gap-6">
+      <form onSubmit={guardarEmergencia}>
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-6">
 
         <input
           type="text"
@@ -52,12 +75,14 @@ export default function EmergencyForm({
           value={paciente}
           onChange={(e) => setPaciente(e.target.value)}
           className="border border-gray-300 rounded-xl px-4 py-3"
+          required
         />
 
         <select
           value={prioridad}
           onChange={(e) => setPrioridad(e.target.value)}
           className="border border-gray-300 rounded-xl px-4 py-3"
+          required
         >
           <option>Alta</option>
           <option>Media</option>
@@ -68,6 +93,7 @@ export default function EmergencyForm({
           value={estado}
           onChange={(e) => setEstado(e.target.value)}
           className="border border-gray-300 rounded-xl px-4 py-3"
+          required
         >
           <option>Pendiente</option>
           <option>En camino</option>
@@ -80,6 +106,7 @@ export default function EmergencyForm({
           value={ubicacion}
           onChange={(e) => setUbicacion(e.target.value)}
           className="border border-gray-300 rounded-xl px-4 py-3"
+          required
         />
 
         <input
@@ -90,14 +117,16 @@ export default function EmergencyForm({
           className="border border-gray-300 rounded-xl px-4 py-3"
         />
 
-      </div>
+        </div>
 
-      <button
-        onClick={guardarEmergencia}
-        className="mt-8 bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl"
-      >
-        Registrar Emergencia
-      </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-8 bg-red-600 hover:bg-red-500 disabled:bg-red-300 text-white px-6 py-3 rounded-xl"
+        >
+          {saving ? "Registrando..." : "Registrar Emergencia"}
+        </button>
+      </form>
 
     </div>
   );

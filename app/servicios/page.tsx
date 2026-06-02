@@ -103,7 +103,7 @@ export default async function ServiciosPage() {
       </div>
 
       {/* Renderizado de la lista interactiva de Servicios */}
-      <ServiciosList initialServicios={serviciosFormateados as any} />
+      <ServiciosList initialServicios={serviciosFormateados} />
     </DashboardLayout>
   );
 }
