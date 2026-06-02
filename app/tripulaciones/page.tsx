@@ -43,7 +43,6 @@ export default function TripulacionesPage() {
 
   useEffect(() => {
     let ignore = false;
-    setLoading(true);
     fetch("/api/tripulaciones?fecha=" + fecha)
       .then(async (response) => {
         const data = await response.json();
@@ -130,7 +129,7 @@ export default function TripulacionesPage() {
           <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3"><Users className="text-red-600" size={36} />Ingrese tripulación</h1>
           <p className="text-gray-500 mt-2">Asignación diaria de piloto, licenciado, médico y personal adicional por ambulancia.</p>
         </div>
-        <label className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm"><CalendarDays size={18} className="text-red-600" /><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="outline-none font-semibold text-gray-700" /></label>
+        <label className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm"><CalendarDays size={18} className="text-red-600" /><input type="date" value={fecha} onChange={(e) => { setLoading(true); setFecha(e.target.value); }} className="outline-none font-semibold text-gray-700" /></label>
       </div>
 
       <form onSubmit={guardarTripulacion} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 mt-8 space-y-6">
