@@ -59,6 +59,24 @@ function daysBetween(from: string, to: string) {
   return Math.ceil((end.getTime() - start.getTime()) / 86400000);
 }
 
+async function readBaseDatosResponse(response: Response) {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      "No se pudo consultar la base de datos. Actualiza Prisma con: npx prisma generate && npx prisma db push, reinicia npm run dev e intenta nuevamente."
+    );
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "No se pudo cargar la base de datos.");
+  }
+
+  return data;
+}
+
 export default function BaseDatosPage() {
   const [from, setFrom] = useState(defaultFrom());
   const [to, setTo] = useState(defaultTo());
@@ -97,13 +115,7 @@ export default function BaseDatosPage() {
 
     try {
       const response = await fetch(`/api/base-datos?from=${from}&to=${to}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "No se pudo cargar la base de datos.");
-        return;
-      }
-
+      const data = await readBaseDatosResponse(response);
       setServicios(data.servicios);
     } catch (err) {
       console.error("Error cargando base de datos", err);
@@ -122,13 +134,7 @@ export default function BaseDatosPage() {
     let ignore = false;
 
     fetch(`/api/base-datos?from=${from}&to=${to}`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "No se pudo cargar la base de datos.");
-        }
-        return data;
-      })
+      .then(readBaseDatosResponse)
       .then((data) => {
         if (!ignore) {
           setServicios(data.servicios);
