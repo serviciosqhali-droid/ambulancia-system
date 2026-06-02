@@ -106,9 +106,38 @@ export default function BaseDatosPage() {
   }
 
   useEffect(() => {
-    loadServicios();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let ignore = false;
+
+    fetch(`/api/base-datos?from=${from}&to=${to}`)
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "No se pudo cargar la base de datos.");
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!ignore) {
+          setServicios(data.servicios);
+          setError("");
+        }
+      })
+      .catch((err) => {
+        console.error("Error cargando base de datos", err);
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Error de conexión. Intente nuevamente.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [from, to]);
 
   return (
     <DashboardLayout>
