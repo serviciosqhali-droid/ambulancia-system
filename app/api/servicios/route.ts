@@ -118,6 +118,8 @@ export async function POST(request: Request) {
         fechaHora: body.fechaHora ? new Date(body.fechaHora) : null,
         direccionEvento: body.direccionEvento ? body.direccionEvento.trim() : null,
         descuento: body.descuento ? Number(body.descuento) : 0,
+        costoOxigeno: body.costoOxigeno ? Number(body.costoOxigeno) : 0,
+        costoDestinoAdicional: body.costoDestinoAdicional ? Number(body.costoDestinoAdicional) : 0,
         notas: body.notas ? body.notas.trim() : null,
       },
     });

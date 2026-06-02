@@ -42,6 +42,8 @@ interface Servicio {
   camillaHoras: number | null;
   costoCamilla: number | null;
   descuento: number | null;
+  costoOxigeno: number | null;
+  costoDestinoAdicional: number | null;
   direccionEvento: string | null;
   horaSalidaBase2: string | null;
   horaLlegadaRecojo2: string | null;
@@ -62,7 +64,7 @@ type EditForm = Record<
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
+  | "costoOxigeno" | "costoDestinoAdicional" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
   string
 > & {
   esIdaYVuelta: boolean;
@@ -149,6 +151,8 @@ function buildEditForm(servicio: Servicio): EditForm {
     alquilerCamilla: servicio.alquilerCamilla,
     camillaHoras: servicio.camillaHoras?.toString() || "",
     descuento: servicio.descuento?.toString() || "0",
+    costoOxigeno: servicio.costoOxigeno?.toString() || "0",
+    costoDestinoAdicional: servicio.costoDestinoAdicional?.toString() || "0",
     notas: servicio.notas || "",
   };
 }
@@ -185,7 +189,10 @@ export default function ServiciosList({ initialServicios }: Props) {
     const espera = minutosEspera > 0 ? Math.ceil(minutosEspera / 30) * 50 : 0;
     const camilla = editForm.alquilerCamilla ? camillaCostos[editForm.camillaHoras] || 0 : 0;
     const descuento = Number(editForm.descuento) || 0;
-    return { espera, camilla, descuento, minutosEspera, total: Math.max(base + espera + camilla - descuento, 0) };
+    const oxigeno = editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0;
+    const destinos = Math.max(editForm.destinos.split("\n").filter((destino) => destino.trim()).length - 1, 0);
+    const destinosExtra = destinos * (Number(editForm.costoDestinoAdicional) || 0);
+    return { espera, camilla, descuento, oxigeno, destinosExtra, destinos, minutosEspera, total: Math.max(base + espera + camilla + oxigeno + destinosExtra - descuento, 0) };
   }, [editForm]);
 
   function openEdit(servicio: Servicio) {
@@ -250,6 +257,8 @@ export default function ServiciosList({ initialServicios }: Props) {
           camillaHoras: editForm.alquilerCamilla && editForm.camillaHoras ? Number(editForm.camillaHoras) : null,
           costoCamilla: costosEdicion.camilla,
           descuento: Number(editForm.descuento) || 0,
+          costoOxigeno: editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0,
+          costoDestinoAdicional: Number(editForm.costoDestinoAdicional) || 0,
         }),
       });
       const data = await response.json();
@@ -306,7 +315,7 @@ export default function ServiciosList({ initialServicios }: Props) {
             </div>
           ) : sortedServicios.map((servicio) => {
             const destinos = parseDestinos(servicio.destinos);
-            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
+            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
             return (
               <div key={servicio.id} className="bg-white border border-gray-100 hover:border-red-100 rounded-3xl p-6 transition-all hover:shadow-md">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -425,11 +434,15 @@ export default function ServiciosList({ initialServicios }: Props) {
               <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
               <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
               <Field label="Descuento (S/.)" type="number" value={editForm.descuento} onChange={(value) => updateForm("descuento", value)} />
+              <Field label="Costo oxígeno (S/.)" type="number" value={editForm.costoOxigeno} onChange={(value) => updateForm("costoOxigeno", value)} />
+              <Field label="Costo por destino adicional (S/.)" type="number" value={editForm.costoDestinoAdicional} onChange={(value) => updateForm("costoDestinoAdicional", value)} />
               <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
               <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
                 <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
                 <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
                 <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
+                <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
+                <p className="text-xs text-green-700">Destinos extra ({costosEdicion.destinos}): {money(costosEdicion.destinosExtra)}</p>
                 <p className="text-xs text-green-700">Descuento: -{money(costosEdicion.descuento)}</p>
                 <p className="text-2xl font-black text-green-700 mt-2">Total: {money(costosEdicion.total)}</p>
               </div>
@@ -447,7 +460,7 @@ export default function ServiciosList({ initialServicios }: Props) {
 }
 
 function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClose: () => void; onEdit: () => void }) {
-  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
+  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-6 border border-gray-100 max-h-[90vh] overflow-y-auto animate-slideUp">
@@ -476,7 +489,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
             <Info title="Contacto despacho" lines={[servicio.contacto || "No especificado", "Tel: " + (servicio.telefono || "No especificado"), servicio.email || ""]} />
-            <Info icon={<FileText size={14} />} title="Facturación y costos" lines={["Total: " + money(total), "Servicio base: " + money(servicio.costo), "Espera: " + (servicio.minutosEspera || 0) + " min - " + money(servicio.costoEspera), "Camilla: " + (servicio.alquilerCamilla ? String(servicio.camillaHoras) + "h - " + money(servicio.costoCamilla) : "No"), "Descuento: -" + money(servicio.descuento), "Comprobante: " + (servicio.comprobanteTipo && servicio.comprobanteNumero ? servicio.comprobanteTipo + " " + servicio.comprobanteNumero : "No registrado")]} />
+            <Info icon={<FileText size={14} />} title="Facturación y costos" lines={["Total: " + money(total), "Servicio base: " + money(servicio.costo), "Espera: " + (servicio.minutosEspera || 0) + " min - " + money(servicio.costoEspera), "Camilla: " + (servicio.alquilerCamilla ? String(servicio.camillaHoras) + "h - " + money(servicio.costoCamilla) : "No"), "Oxígeno: " + money(servicio.costoOxigeno), "Destinos adicionales: " + money(servicio.costoDestinoAdicional), "Descuento: -" + money(servicio.descuento), "Comprobante: " + (servicio.comprobanteTipo && servicio.comprobanteNumero ? servicio.comprobanteTipo + " " + servicio.comprobanteNumero : "No registrado")]} />
           </div>
           {servicio.observaciones && <p className="border-t border-gray-100 pt-4 text-sm text-gray-700 italic">{servicio.observaciones}</p>}
           <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-100">

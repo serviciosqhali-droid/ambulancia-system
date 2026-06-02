@@ -115,6 +115,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
       minutosEspera: optionalNumber(body.minutosEspera) ?? 0,
       costoEspera: optionalNumber(body.costoEspera) ?? 0,
       descuento: optionalNumber(body.descuento) ?? 0,
+      costoOxigeno: optionalNumber(body.costoOxigeno) ?? 0,
+      costoDestinoAdicional: optionalNumber(body.costoDestinoAdicional) ?? 0,
       alquilerCamilla: Boolean(body.alquilerCamilla),
       camillaHoras: optionalNumber(body.camillaHoras),
       costoCamilla: optionalNumber(body.costoCamilla) ?? 0,

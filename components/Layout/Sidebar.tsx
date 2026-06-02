@@ -8,6 +8,7 @@ import {
   BriefcaseMedical,
   Database,
   UserRoundCog,
+  UserPlus,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -51,6 +52,11 @@ export default function Sidebar() {
         <Link href="/tripulaciones" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
           <UserRoundCog />
           Tripulación diaria
+        </Link>
+
+        <Link href="/personal" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
+          <UserPlus />
+          Personal Qhali Kay
         </Link>
       </nav>
     </aside>

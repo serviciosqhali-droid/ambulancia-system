@@ -53,8 +53,10 @@ export function totalServicio(servicio: {
   costoEspera: number | null;
   costoCamilla: number | null;
   descuento: number | null;
+  costoOxigeno: number | null;
+  costoDestinoAdicional: number | null;
 }) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
+  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
 }
 
 export function formatDateTime(value: Date | string | null) {
@@ -96,6 +98,8 @@ export function serializeServicio(servicio: ServicioForExport) {
     costoEspera: servicio.costoEspera || 0,
     costoCamilla: servicio.costoCamilla || 0,
     descuento: servicio.descuento || 0,
+    costoOxigeno: servicio.costoOxigeno || 0,
+    costoDestinoAdicional: servicio.costoDestinoAdicional || 0,
     total: totalServicio(servicio),
     metodoPago: servicio.metodoPago || "",
     direccionEvento: servicio.direccionEvento || "",

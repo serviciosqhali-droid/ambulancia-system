@@ -34,6 +34,8 @@ type ServicioRow = {
   observaciones?: string;
   notas?: string;
   descuento?: number;
+  costoOxigeno?: number;
+  costoDestinoAdicional?: number;
 };
 
 function formatInputDate(date: Date) {
@@ -279,6 +281,12 @@ export default function BaseDatosPage() {
               <Detail label="Oxígeno" value={`${selectedServicio.requiereOxigeno || "-"} ${selectedServicio.litrosOxigeno || ""}`} />
               <Detail label="Observaciones" value={selectedServicio.observaciones || "-"} />
               <Detail label="Notas" value={selectedServicio.notas || "-"} />
+              <Detail label="Costo base" value={`S/. ${selectedServicio.costoBase.toFixed(2)}`} />
+              <Detail label="Costo espera" value={`S/. ${selectedServicio.costoEspera.toFixed(2)}`} />
+              <Detail label="Costo camilla" value={`S/. ${selectedServicio.costoCamilla.toFixed(2)}`} />
+              <Detail label="Costo oxígeno" value={`S/. ${(selectedServicio.costoOxigeno || 0).toFixed(2)}`} />
+              <Detail label="Costo destinos adicionales" value={`S/. ${(selectedServicio.costoDestinoAdicional || 0).toFixed(2)}`} />
+              <Detail label="Descuento" value={`- S/. ${(selectedServicio.descuento || 0).toFixed(2)}`} />
               <Detail label="Total" value={`S/. ${selectedServicio.total.toFixed(2)}`} />
             </div>
           </div>

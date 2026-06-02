@@ -18,7 +18,7 @@ function serviceDateWhere(inicio: Date, fin: Date) {
   return {
     OR: [
       { fechaHora: { gte: inicio, lt: fin } },
-      { fechaHora: null, createdAt: { gte: inicio, lt: fin } },
+      { createdAt: { gte: inicio, lt: fin } },
     ],
   };
 }

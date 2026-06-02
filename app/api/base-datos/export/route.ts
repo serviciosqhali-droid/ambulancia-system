@@ -20,6 +20,8 @@ const columns = [
   ["costoBase", "Costo base"],
   ["costoEspera", "Costo espera"],
   ["costoCamilla", "Costo camilla"],
+  ["costoOxigeno", "Costo oxígeno"],
+  ["costoDestinoAdicional", "Costo destinos adicionales"],
   ["descuento", "Descuento"],
   ["total", "Total"],
   ["metodoPago", "Método pago"],
