@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/Layout/DashboardLayout";
 import PatientTable from "@/components/PatientTable";
 import PatientForm from "@/components/PatientForm";
 
-export default function PacientesPage() {
+export default function ClientesPage() {
 
   const [refresh, setRefresh] = useState(false);
 
@@ -25,7 +25,7 @@ export default function PacientesPage() {
           </h1>
 
           <p className="text-gray-500 mt-2">
-            Gestión de pacientes del sistema
+            Gestión de clientes del sistema
           </p>
         </div>
 

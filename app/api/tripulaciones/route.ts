@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-const MAX_PERSONAL_ADICIONAL = 3;
+const MAX_PERSONAL_ADICIONAL = 2;
 
 function startOfDayFromInput(value: string | null) {
   const source = value ? new Date(`${value}T00:00:00`) : new Date();
@@ -63,10 +63,11 @@ export async function POST(request: Request) {
       !body.fecha ||
       !body.nombre?.trim() ||
       !body.ambulancia?.trim() ||
-      !body.piloto?.trim()
+      !body.piloto?.trim() ||
+      !body.licenciado?.trim()
     ) {
       return NextResponse.json(
-        { error: "Fecha, nombre, ambulancia y piloto son obligatorios." },
+        { error: "Fecha, nombre, ambulancia, piloto y licenciado son obligatorios." },
         { status: 400 }
       );
     }
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
         nombre: body.nombre.trim(),
         ambulancia: body.ambulancia.trim(),
         piloto: body.piloto.trim(),
-        licenciado: body.licenciado?.trim() || null,
+        licenciado: body.licenciado.trim(),
         medico: body.medico?.trim() || null,
         personalAdicional: JSON.stringify(personalAdicional),
         notas: body.notas?.trim() || null,

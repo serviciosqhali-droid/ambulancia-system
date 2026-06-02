@@ -41,6 +41,13 @@ interface Servicio {
   alquilerCamilla: boolean;
   camillaHoras: number | null;
   costoCamilla: number | null;
+  descuento: number | null;
+  direccionEvento: string | null;
+  horaSalidaBase2: string | null;
+  horaLlegadaRecojo2: string | null;
+  horaInicioTraslado2: string | null;
+  horaLlegadaDestino2: string | null;
+  horaTermino2: string | null;
   notas: string | null;
   createdAt: string;
 }
@@ -55,7 +62,7 @@ type EditForm = Record<
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "horaLlegadaDestino" | "horaTermino" | "minutosEspera" | "camillaHoras" | "notas",
+  | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
   string
 > & {
   esIdaYVuelta: boolean;
@@ -91,6 +98,14 @@ function money(value: number | null | undefined) {
   return "S/. " + (value || 0).toFixed(2);
 }
 
+function minutesBetween(start: string, end: string) {
+  if (!start || !end) return 0;
+  const startTime = new Date(start).getTime();
+  const endTime = new Date(end).getTime();
+  if (Number.isNaN(startTime) || Number.isNaN(endTime) || endTime <= startTime) return 0;
+  return Math.ceil((endTime - startTime) / 60000);
+}
+
 function buildEditForm(servicio: Servicio): EditForm {
   return {
     paciente: servicio.paciente || "",
@@ -119,14 +134,21 @@ function buildEditForm(servicio: Servicio): EditForm {
     fechaHora: toDatetimeLocal(servicio.fechaHora),
     comprobanteTipo: servicio.comprobanteTipo || "",
     comprobanteNumero: servicio.comprobanteNumero || "",
+    direccionEvento: servicio.direccionEvento || "",
     horaSalidaBase: toDatetimeLocal(servicio.horaSalidaBase),
     horaLlegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
     horaInicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
     horaLlegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino),
     horaTermino: toDatetimeLocal(servicio.horaTermino),
+    horaSalidaBase2: toDatetimeLocal(servicio.horaSalidaBase2),
+    horaLlegadaRecojo2: toDatetimeLocal(servicio.horaLlegadaRecojo2),
+    horaInicioTraslado2: toDatetimeLocal(servicio.horaInicioTraslado2),
+    horaLlegadaDestino2: toDatetimeLocal(servicio.horaLlegadaDestino2),
+    horaTermino2: toDatetimeLocal(servicio.horaTermino2),
     minutosEspera: servicio.minutosEspera?.toString() || "0",
     alquilerCamilla: servicio.alquilerCamilla,
     camillaHoras: servicio.camillaHoras?.toString() || "",
+    descuento: servicio.descuento?.toString() || "0",
     notas: servicio.notas || "",
   };
 }
@@ -159,10 +181,11 @@ export default function ServiciosList({ initialServicios }: Props) {
   const costosEdicion = useMemo(() => {
     if (!editForm) return { espera: 0, camilla: 0, total: 0 };
     const base = Number(editForm.costo) || 0;
-    const minutosEspera = Number(editForm.minutosEspera) || 0;
+    const minutosEspera = minutesBetween(editForm.horaLlegadaDestino, editForm.horaTermino);
     const espera = minutosEspera > 0 ? Math.ceil(minutosEspera / 30) * 50 : 0;
     const camilla = editForm.alquilerCamilla ? camillaCostos[editForm.camillaHoras] || 0 : 0;
-    return { espera, camilla, total: base + espera + camilla };
+    const descuento = Number(editForm.descuento) || 0;
+    return { espera, camilla, descuento, minutosEspera, total: Math.max(base + espera + camilla - descuento, 0) };
   }, [editForm]);
 
   function openEdit(servicio: Servicio) {
@@ -222,10 +245,11 @@ export default function ServiciosList({ initialServicios }: Props) {
           peso: editForm.peso ? Number(editForm.peso) : null,
           litrosOxigeno: editForm.litrosOxigeno ? Number(editForm.litrosOxigeno) : null,
           costo: Number(editForm.costo) || 0,
-          minutosEspera: Number(editForm.minutosEspera) || 0,
+          minutosEspera: costosEdicion.minutosEspera,
           costoEspera: costosEdicion.espera,
           camillaHoras: editForm.alquilerCamilla && editForm.camillaHoras ? Number(editForm.camillaHoras) : null,
           costoCamilla: costosEdicion.camilla,
+          descuento: Number(editForm.descuento) || 0,
         }),
       });
       const data = await response.json();
@@ -282,7 +306,7 @@ export default function ServiciosList({ initialServicios }: Props) {
             </div>
           ) : sortedServicios.map((servicio) => {
             const destinos = parseDestinos(servicio.destinos);
-            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0);
+            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
             return (
               <div key={servicio.id} className="bg-white border border-gray-100 hover:border-red-100 rounded-3xl p-6 transition-all hover:shadow-md">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
@@ -378,7 +402,20 @@ export default function ServiciosList({ initialServicios }: Props) {
               <Field label="Inicio del traslado" type="datetime-local" value={editForm.horaInicioTraslado} onChange={(value) => updateForm("horaInicioTraslado", value)} />
               <Field label="Llegada al destino" type="datetime-local" value={editForm.horaLlegadaDestino} onChange={(value) => updateForm("horaLlegadaDestino", value)} />
               <Field label="Término del servicio" type="datetime-local" value={editForm.horaTermino} onChange={(value) => updateForm("horaTermino", value)} />
-              <Field label="Minutos de espera" type="number" value={editForm.minutosEspera} onChange={(value) => updateForm("minutosEspera", value)} />
+              <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
+                <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
+                <p className="text-2xl font-black text-yellow-700 mt-2">{costosEdicion.minutosEspera} min</p>
+                <p className="text-xs text-yellow-700 mt-1">Desde llegada al destino hasta término del servicio.</p>
+              </div>
+            </div>
+
+            <SectionTitle title="Segundo traslado (opcional)" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <Field label="Salida de ambulancia a segundo recojo" type="datetime-local" value={editForm.horaSalidaBase2} onChange={(value) => updateForm("horaSalidaBase2", value)} />
+              <Field label="Llegada al segundo recojo" type="datetime-local" value={editForm.horaLlegadaRecojo2} onChange={(value) => updateForm("horaLlegadaRecojo2", value)} />
+              <Field label="Inicio segundo traslado" type="datetime-local" value={editForm.horaInicioTraslado2} onChange={(value) => updateForm("horaInicioTraslado2", value)} />
+              <Field label="Llegada segundo destino" type="datetime-local" value={editForm.horaLlegadaDestino2} onChange={(value) => updateForm("horaLlegadaDestino2", value)} />
+              <Field label="Término segundo servicio" type="datetime-local" value={editForm.horaTermino2} onChange={(value) => updateForm("horaTermino2", value)} />
             </div>
 
             <SectionTitle title="Costos adicionales y comprobante" />
@@ -387,11 +424,13 @@ export default function ServiciosList({ initialServicios }: Props) {
               <SelectField label="Alquiler de camilla" value={editForm.alquilerCamilla ? editForm.camillaHoras : ""} onChange={(value) => { updateForm("alquilerCamilla", Boolean(value)); updateForm("camillaHoras", value); }} options={["", "4", "6", "12"]} optionLabels={{ "": "No alquila camilla", "4": "4 horas - S/. 350", "6": "6 horas - S/. 400", "12": "12 horas - S/. 750" }} />
               <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
               <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
+              <Field label="Descuento (S/.)" type="number" value={editForm.descuento} onChange={(value) => updateForm("descuento", value)} />
               <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
               <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
                 <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
                 <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
                 <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
+                <p className="text-xs text-green-700">Descuento: -{money(costosEdicion.descuento)}</p>
                 <p className="text-2xl font-black text-green-700 mt-2">Total: {money(costosEdicion.total)}</p>
               </div>
             </div>
@@ -408,7 +447,7 @@ export default function ServiciosList({ initialServicios }: Props) {
 }
 
 function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClose: () => void; onEdit: () => void }) {
-  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0);
+  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-6 border border-gray-100 max-h-[90vh] overflow-y-auto animate-slideUp">
@@ -437,7 +476,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
             <Info title="Contacto despacho" lines={[servicio.contacto || "No especificado", "Tel: " + (servicio.telefono || "No especificado"), servicio.email || ""]} />
-            <Info icon={<FileText size={14} />} title="Facturación y costos" lines={["Total: " + money(total), "Servicio base: " + money(servicio.costo), "Espera: " + (servicio.minutosEspera || 0) + " min - " + money(servicio.costoEspera), "Camilla: " + (servicio.alquilerCamilla ? String(servicio.camillaHoras) + "h - " + money(servicio.costoCamilla) : "No"), "Comprobante: " + (servicio.comprobanteTipo && servicio.comprobanteNumero ? servicio.comprobanteTipo + " " + servicio.comprobanteNumero : "No registrado")]} />
+            <Info icon={<FileText size={14} />} title="Facturación y costos" lines={["Total: " + money(total), "Servicio base: " + money(servicio.costo), "Espera: " + (servicio.minutosEspera || 0) + " min - " + money(servicio.costoEspera), "Camilla: " + (servicio.alquilerCamilla ? String(servicio.camillaHoras) + "h - " + money(servicio.costoCamilla) : "No"), "Descuento: -" + money(servicio.descuento), "Comprobante: " + (servicio.comprobanteTipo && servicio.comprobanteNumero ? servicio.comprobanteTipo + " " + servicio.comprobanteNumero : "No registrado")]} />
           </div>
           {servicio.observaciones && <p className="border-t border-gray-100 pt-4 text-sm text-gray-700 italic">{servicio.observaciones}</p>}
           <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-100">

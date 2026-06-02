@@ -52,8 +52,9 @@ export function totalServicio(servicio: {
   costo: number | null;
   costoEspera: number | null;
   costoCamilla: number | null;
+  descuento: number | null;
 }) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0);
+  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
 }
 
 export function formatDateTime(value: Date | string | null) {
@@ -94,8 +95,10 @@ export function serializeServicio(servicio: ServicioForExport) {
     costoBase: servicio.costo || 0,
     costoEspera: servicio.costoEspera || 0,
     costoCamilla: servicio.costoCamilla || 0,
+    descuento: servicio.descuento || 0,
     total: totalServicio(servicio),
     metodoPago: servicio.metodoPago || "",
+    direccionEvento: servicio.direccionEvento || "",
     comprobanteTipo: servicio.comprobanteTipo || "",
     comprobanteNumero: servicio.comprobanteNumero || "",
     diagnostico: servicio.diagnostico || "",

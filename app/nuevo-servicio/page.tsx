@@ -48,6 +48,7 @@ export default function NuevoServicioPage() {
   const [eventoNombre, setEventoNombre] = useState("");
   const [eventoTipo, setEventoTipo] = useState("");
   const [eventoLugar, setEventoLugar] = useState("");
+  const [eventoDireccion, setEventoDireccion] = useState("");
   const [eventoDuracion, setEventoDuracion] = useState("");
   const [eventoUnidad, setEventoUnidad] = useState("Horas");
   const [requiereMedico, setRequiereMedico] = useState(true);
@@ -171,8 +172,9 @@ export default function NuevoServicioPage() {
           edad: null,
           peso: null,
           tipoServicio,
-          origen: eventoLugar,
+          origen: eventoDireccion || eventoLugar,
           referencia: eventoTipo,
+          direccionEvento: eventoDireccion,
           destinos: [eventoLugar],
           esIdaYVuelta: false,
           diagnostico: `Cobertura médica para evento: ${eventoTipo}`,
@@ -279,6 +281,8 @@ export default function NuevoServicioPage() {
           setEventoTipo={setEventoTipo}
           eventoLugar={eventoLugar}
           setEventoLugar={setEventoLugar}
+          eventoDireccion={eventoDireccion}
+          setEventoDireccion={setEventoDireccion}
           anteriorPaso={anteriorPaso}
           siguientePaso={siguientePaso}
         />
@@ -434,13 +438,15 @@ function StepActions({ anteriorPaso, siguientePaso, submitLabel = "Continuar" }:
   );
 }
 
-function PasoEventoInformacion({ eventoNombre, setEventoNombre, eventoTipo, setEventoTipo, eventoLugar, setEventoLugar, anteriorPaso, siguientePaso }: {
+function PasoEventoInformacion({ eventoNombre, setEventoNombre, eventoTipo, setEventoTipo, eventoLugar, setEventoLugar, eventoDireccion, setEventoDireccion, anteriorPaso, siguientePaso }: {
   eventoNombre: string;
   setEventoNombre: (value: string) => void;
   eventoTipo: string;
   setEventoTipo: (value: string) => void;
   eventoLugar: string;
   setEventoLugar: (value: string) => void;
+  eventoDireccion: string;
+  setEventoDireccion: (value: string) => void;
   anteriorPaso: () => void;
   siguientePaso: () => void;
 }) {
@@ -451,6 +457,7 @@ function PasoEventoInformacion({ eventoNombre, setEventoNombre, eventoTipo, setE
         <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Nombre del Evento *</span><input value={eventoNombre} onChange={(e) => setEventoNombre(e.target.value)} placeholder="Ej: Maratón Lima 2026" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Tipo de Evento *</span><input value={eventoTipo} onChange={(e) => setEventoTipo(e.target.value)} placeholder="Ej: Evento deportivo, Concierto" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Lugar del Evento *</span><input value={eventoLugar} onChange={(e) => setEventoLugar(e.target.value)} placeholder="Ej: Estadio Nacional" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
+        <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Dirección (opcional)</span><input value={eventoDireccion} onChange={(e) => setEventoDireccion(e.target.value)} placeholder="Ej: Av. Javier Prado 123" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
       </div>
       <StepActions anteriorPaso={anteriorPaso} siguientePaso={siguientePaso} />
     </EventCard>
@@ -537,7 +544,7 @@ function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, emai
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Nombre del Contacto *</span><input value={contacto} onChange={(e) => setContacto(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Teléfono *</span><input value={telefono} maxLength={9} onChange={(e) => setTelefono(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
-        <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Email para Cotización</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /><span className="text-xs text-gray-400 mt-1 block">La cotización se enviará a este email o por WhatsApp</span></label>
+        <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Email para Cotización (opcional)</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /><span className="text-xs text-gray-400 mt-1 block">La cotización se enviará a este email o por WhatsApp</span></label>
       </div>
       <div className="mt-6"><p className="font-semibold text-gray-700 mb-3">Estado del Servicio</p><div className="flex flex-wrap gap-2">{estados.map((estado) => <button key={estado} type="button" onClick={() => setEstadoServicio(estado)} className={`px-4 py-2 rounded-full border text-sm font-semibold ${estadoServicio === estado ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50 text-gray-500"}`}>{estado}</button>)}</div></div>
       <label className="block mt-6"><span className="block mb-2 font-semibold text-gray-700">Observaciones Adicionales</span><textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 h-28 focus:outline-none focus:border-red-500" /></label>

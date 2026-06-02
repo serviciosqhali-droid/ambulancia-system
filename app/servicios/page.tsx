@@ -27,8 +27,9 @@ function totalServicio(servicio: {
   costo: number | null;
   costoEspera: number | null;
   costoCamilla: number | null;
+  descuento: number | null;
 }) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0);
+  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
 }
 
 export default async function ServiciosPage() {
@@ -57,6 +58,11 @@ export default async function ServiciosPage() {
     horaInicioTraslado: s.horaInicioTraslado ? s.horaInicioTraslado.toISOString() : null,
     horaLlegadaDestino: s.horaLlegadaDestino ? s.horaLlegadaDestino.toISOString() : null,
     horaTermino: s.horaTermino ? s.horaTermino.toISOString() : null,
+    horaSalidaBase2: s.horaSalidaBase2 ? s.horaSalidaBase2.toISOString() : null,
+    horaLlegadaRecojo2: s.horaLlegadaRecojo2 ? s.horaLlegadaRecojo2.toISOString() : null,
+    horaInicioTraslado2: s.horaInicioTraslado2 ? s.horaInicioTraslado2.toISOString() : null,
+    horaLlegadaDestino2: s.horaLlegadaDestino2 ? s.horaLlegadaDestino2.toISOString() : null,
+    horaTermino2: s.horaTermino2 ? s.horaTermino2.toISOString() : null,
   }));
 
   return (

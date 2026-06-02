@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/Layout/DashboardLayout";
-import { Database, Download, Search } from "lucide-react";
+import { Database, Download, Eye, Search } from "lucide-react";
 
 type ServicioRow = {
   id: number;
@@ -24,6 +24,16 @@ type ServicioRow = {
   metodoPago: string;
   comprobanteTipo: string;
   comprobanteNumero: string;
+  direccionEvento?: string;
+  diagnostico?: string;
+  sintomas?: string;
+  enfermedadFondo?: string;
+  tratamientoActual?: string;
+  requiereOxigeno?: string;
+  litrosOxigeno?: string | number;
+  observaciones?: string;
+  notas?: string;
+  descuento?: number;
 };
 
 function formatInputDate(date: Date) {
@@ -54,6 +64,7 @@ export default function BaseDatosPage() {
   const [servicios, setServicios] = useState<ServicioRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedServicio, setSelectedServicio] = useState<ServicioRow | null>(null);
 
   const filtered = useMemo(() => {
     const term = query.toLowerCase();
@@ -220,6 +231,7 @@ export default function BaseDatosPage() {
                 <th className="p-3">Contacto</th>
                 <th className="p-3">Ambulancia</th>
                 <th className="p-3 text-right">Total</th>
+                <th className="p-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -233,12 +245,49 @@ export default function BaseDatosPage() {
                   <td className="p-3 text-gray-500">{servicio.contacto || "-"}<br />{servicio.telefono}</td>
                   <td className="p-3 text-gray-500">{servicio.ambulancia || "-"}</td>
                   <td className="p-3 text-right font-black text-green-600">S/. {servicio.total.toFixed(2)}</td>
+                  <td className="p-3 text-right"><button onClick={() => setSelectedServicio(servicio)} className="inline-flex items-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50"><Eye size={14} /> Ver</button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {selectedServicio && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <h2 className="text-2xl font-black text-gray-800">Detalle {selectedServicio.codigo}</h2>
+                <p className="text-sm text-gray-500">{selectedServicio.tipoServicio} - {selectedServicio.estado}</p>
+              </div>
+              <button onClick={() => setSelectedServicio(null)} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">X</button>
+            </div>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+              <Detail label="Paciente / Cliente" value={selectedServicio.paciente} />
+              <Detail label="Contacto" value={`${selectedServicio.contacto || "-"} / ${selectedServicio.telefono || "-"}`} />
+              <Detail label="Origen" value={selectedServicio.origen} />
+              <Detail label="Destinos" value={selectedServicio.destinos} />
+              <Detail label="Dirección evento" value={selectedServicio.direccionEvento || "-"} />
+              <Detail label="Ambulancia" value={selectedServicio.ambulancia || "-"} />
+              <Detail label="Fecha programada" value={selectedServicio.fechaProgramada || "-"} />
+              <Detail label="Comprobante" value={selectedServicio.comprobanteNumero ? `${selectedServicio.comprobanteTipo} ${selectedServicio.comprobanteNumero}` : "-"} />
+              <Detail label="Diagnóstico" value={selectedServicio.diagnostico || "-"} />
+              <Detail label="Síntomas" value={selectedServicio.sintomas || "-"} />
+              <Detail label="Enfermedad de fondo" value={selectedServicio.enfermedadFondo || "-"} />
+              <Detail label="Tratamiento actual" value={selectedServicio.tratamientoActual || "-"} />
+              <Detail label="Oxígeno" value={`${selectedServicio.requiereOxigeno || "-"} ${selectedServicio.litrosOxigeno || ""}`} />
+              <Detail label="Observaciones" value={selectedServicio.observaciones || "-"} />
+              <Detail label="Notas" value={selectedServicio.notas || "-"} />
+              <Detail label="Total" value={`S/. ${selectedServicio.total.toFixed(2)}`} />
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4"><p className="text-xs font-bold uppercase text-gray-400">{label}</p><p className="mt-1 font-semibold text-gray-800 whitespace-pre-wrap">{value}</p></div>;
 }

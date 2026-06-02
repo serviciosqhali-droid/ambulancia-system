@@ -116,6 +116,8 @@ export async function POST(request: Request) {
         metodoPago: body.metodoPago || "Yape",
         estado: body.estado || "Cotización",
         fechaHora: body.fechaHora ? new Date(body.fechaHora) : null,
+        direccionEvento: body.direccionEvento ? body.direccionEvento.trim() : null,
+        descuento: body.descuento ? Number(body.descuento) : 0,
         notas: body.notas ? body.notas.trim() : null,
       },
     });
