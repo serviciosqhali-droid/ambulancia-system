@@ -63,6 +63,7 @@ type EditForm = Record<
 };
 
 const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
+const estadosServicio = ["Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
 
 function parseDestinos(destinosStr: string): string[] {
   try {
@@ -175,6 +176,35 @@ export default function ServiciosList({ initialServicios }: Props) {
     setEditForm((current) => current ? { ...current, [key]: value } : current);
   }
 
+  async function cambiarEstadoRapido(servicio: Servicio, nuevoEstado: string) {
+    try {
+      const response = await fetch("/api/servicios/" + servicio.id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...servicio,
+          estado: nuevoEstado,
+          destinos: parseDestinos(servicio.destinos),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "No se pudo actualizar el estado del servicio.");
+        return;
+      }
+
+      const updatedServicio = data as Servicio;
+      setServicios((current) => current.map((item) => item.id === updatedServicio.id ? updatedServicio : item));
+      setSelectedServicio((current) => current?.id === updatedServicio.id ? updatedServicio : current);
+      setEditingServicio((current) => current?.id === updatedServicio.id ? updatedServicio : current);
+    } catch (err) {
+      console.error("Error actualizando estado rápido", err);
+      alert("Error de conexión al actualizar el estado.");
+    }
+  }
+
   async function guardarEdicion() {
     if (!editingServicio || !editForm) return;
     setSaving(true);
@@ -280,9 +310,19 @@ export default function ServiciosList({ initialServicios }: Props) {
                       <p className="text-2xl font-black text-green-600">{money(totalServicio)}</p>
                       <p className="text-xs text-gray-400 font-semibold mt-1 flex items-center gap-1 justify-end"><Calendar size={12} />{servicio.fechaHora ? new Date(servicio.fechaHora).toLocaleDateString() : new Date(servicio.createdAt).toLocaleDateString()}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setSelectedServicio(servicio)} className="border border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"><Eye size={14} /> Ver</button>
-                      <button onClick={() => openEdit(servicio)} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"><Edit3 size={14} /> Editar</button>
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                      <select
+                        value={servicio.estado || "Cotización"}
+                        onChange={(e) => cambiarEstadoRapido(servicio, e.target.value)}
+                        className="border border-gray-200 bg-white text-gray-700 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus:outline-none focus:border-red-500"
+                        title="Cambiar estado rápido"
+                      >
+                        {estadosServicio.map((estado) => (
+                          <option key={estado} value={estado}>{estado}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => setSelectedServicio(servicio)} className="border border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"><Eye size={14} /> Ver</button>
+                      <button onClick={() => openEdit(servicio)} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"><Edit3 size={14} /> Editar</button>
                     </div>
                   </div>
                 </div>
@@ -316,7 +356,7 @@ export default function ServiciosList({ initialServicios }: Props) {
               <Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} />
               <Field label="Ambulancia asignada" value={editForm.ambulancia} onChange={(value) => updateForm("ambulancia", value.toUpperCase())} />
               <SelectField label="Prioridad" value={editForm.prioridad} onChange={(value) => updateForm("prioridad", value)} options={["Alta", "Media", "Baja", "Crítica"]} />
-              <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={["Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"]} />
+              <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
               <Field label="Fecha y hora programada" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
               <SelectField label="Método de pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Yape", "Transferencia", "Efectivo", "Tarjeta"]} />
             </div>
