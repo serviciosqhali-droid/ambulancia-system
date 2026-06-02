@@ -5,6 +5,7 @@ import {
   Users,
   Siren,
   Truck,
+  BriefcaseMedical,
   Database,
   UserRoundCog,
 } from "lucide-react";
@@ -12,65 +13,46 @@ import {
 export default function Sidebar() {
   return (
     <aside className="w-72 bg-red-700 text-white p-6 min-h-screen">
-
       <div className="flex items-center gap-3 mb-10">
         <Ambulance size={40} />
 
         <div>
-          <h1 className="text-2xl font-bold">
-            Qhali Kay
-          </h1>
-
-          <p className="text-sm text-red-100">
-            Sistema Médico
-          </p>
+          <h1 className="text-2xl font-bold">Qhali Kay</h1>
+          <p className="text-sm text-red-100">Sistema Médico</p>
         </div>
       </div>
 
       <nav className="space-y-3">
-
-        <Link
-          href="/"
-          className="w-full flex items-center gap-3 bg-red-600 hover:bg-red-500 p-3 rounded-xl transition"
-        >
+        <Link href="/" className="w-full flex items-center gap-3 bg-red-600 hover:bg-red-500 p-3 rounded-xl transition">
           <Siren />
           Dashboard
         </Link>
 
-        <Link
-          href="/pacientes"
-          className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
-        >
+        <Link href="/pacientes" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
           <Users />
           Pacientes
         </Link>
 
-        <Link
-          href="/servicios"
-          className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
-        >
-          <Database size={20} />
-          Base datos
+        <Link href="/servicios" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
+          <BriefcaseMedical size={20} />
+          Servicios
         </Link>
 
-        <Link
-          href="/ambulancias"
-          className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
-        >
+        <Link href="/base-datos" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
+          <Database size={20} />
+          Base de datos
+        </Link>
+
+        <Link href="/ambulancias" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
           <Truck />
           Ambulancias
         </Link>
 
-        <Link
-          href="/tripulaciones"
-          className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
-        >
+        <Link href="/tripulaciones" className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition">
           <UserRoundCog />
           Tripulación diaria
         </Link>
-
       </nav>
-
     </aside>
   );
 }

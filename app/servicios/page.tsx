@@ -4,44 +4,51 @@ import ServiciosList from "@/components/ServiciosList";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
+function todayRange() {
+  const inicio = new Date();
+  inicio.setHours(0, 0, 0, 0);
+
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + 1);
+
+  return { inicio, fin };
+}
+
+function serviceDateWhere(inicio: Date, fin: Date) {
+  return {
+    OR: [
+      { fechaHora: { gte: inicio, lt: fin } },
+      { fechaHora: null, createdAt: { gte: inicio, lt: fin } },
+    ],
+  };
+}
+
+function totalServicio(servicio: {
+  costo: number | null;
+  costoEspera: number | null;
+  costoCamilla: number | null;
+}) {
+  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0);
+}
+
 export default async function ServiciosPage() {
-  // 1. Obtener estadísticas dinámicas de la base de datos
-  const totalServicios = await prisma.servicio.count();
-  
-  const enCurso = await prisma.servicio.count({
-    where: {
-      estado: "En Curso",
-    },
-  });
+  const { inicio, fin } = todayRange();
+  const filtroHoy = serviceDateWhere(inicio, fin);
 
-  const traslados = await prisma.servicio.count({
-    where: {
-      tipoServicio: "Traslado",
-    },
-  });
-
-  const ingresosResult = await prisma.servicio.aggregate({
-    where: {
-      estado: "Completado",
-    },
-    _sum: {
-      costo: true,
-    },
-  });
-  
-  const ingresos = ingresosResult._sum.costo || 0;
-
-  // 2. Obtener todos los servicios ordenados por fecha de creación descendente
   const servicios = await prisma.servicio.findMany({
+    where: filtroHoy,
     orderBy: {
       createdAt: "desc",
     },
   });
 
-  // Mapeamos los servicios a un formato plano compatible para pasar al Client Component
+  const totalServicios = servicios.length;
+  const enCurso = servicios.filter((servicio) => servicio.estado === "En Curso").length;
+  const traslados = servicios.filter((servicio) => servicio.tipoServicio === "Traslado").length;
+  const ingresos = servicios.reduce((total, servicio) => total + totalServicio(servicio), 0);
+
   const serviciosFormateados = servicios.map((s) => ({
     ...s,
-    // Convertir fechas a string de forma segura para evitar problemas de serialización en Server Components
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt ? s.updatedAt.toISOString() : null,
     fechaHora: s.fechaHora ? s.fechaHora.toISOString() : null,
@@ -60,7 +67,7 @@ export default async function ServiciosPage() {
             Servicios
           </h1>
           <p className="text-gray-500 mt-2">
-            Gestión y despacho integral de traslados y alquileres.
+            Operación diaria: servicios e ingresos contabilizados de hoy.
           </p>
         </div>
 
@@ -73,18 +80,17 @@ export default async function ServiciosPage() {
         </Link>
       </div>
 
-      {/* Tarjetas de Resumen Operativo de Servicios */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Total Servicios</p>
+          <p className="text-gray-500 text-sm font-semibold">Servicios Hoy</p>
           <h2 className="text-4xl font-black mt-4 text-gray-800">
             {totalServicios}
           </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados en historial</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados durante el día</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">En Curso</p>
+          <p className="text-gray-500 text-sm font-semibold">En Curso Hoy</p>
           <h2 className="text-4xl font-black mt-4 text-orange-500">
             {enCurso}
           </h2>
@@ -92,23 +98,22 @@ export default async function ServiciosPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Traslados</p>
+          <p className="text-gray-500 text-sm font-semibold">Traslados Hoy</p>
           <h2 className="text-4xl font-black mt-4 text-blue-600">
             {traslados}
           </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados asistidos</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados del día</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Ingresos Totales</p>
+          <p className="text-gray-500 text-sm font-semibold">Ingresos Hoy</p>
           <h2 className="text-3xl font-black mt-4 text-green-600">
             S/. {ingresos.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Servicios completados</p>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Base + espera + camilla</p>
         </div>
       </div>
 
-      {/* Renderizado de la lista interactiva de Servicios */}
       <ServiciosList initialServicios={serviciosFormateados} />
     </DashboardLayout>
   );
