@@ -372,9 +372,14 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
       <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-6 border border-gray-100 max-h-[90vh] overflow-y-auto animate-slideUp">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4 gap-4">
           <h3 className="text-2xl font-extrabold text-gray-800">Detalles del Servicio <span className="text-sm bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-lg">SRV-{String(servicio.id).padStart(3, "0")}</span></h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors cursor-pointer">X</button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onEdit} className="bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-2">
+              <Edit3 size={16} /> Editar servicio
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors cursor-pointer">X</button>
+          </div>
         </div>
         <div className="mt-6 space-y-6 text-gray-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

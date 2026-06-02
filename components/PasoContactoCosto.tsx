@@ -11,6 +11,7 @@ interface Props {
   edad: string;
   origen: string;
   destinos: string[];
+  esIdaYVuelta: boolean;
   diagnostico: string;
   enfermedadFondo: string;
   sintomas: string;
@@ -57,6 +58,7 @@ export default function PasoContactoCosto({
   edad,
   origen,
   destinos,
+  esIdaYVuelta,
   diagnostico,
   enfermedadFondo,
   sintomas,
@@ -144,10 +146,11 @@ export default function PasoContactoCosto({
 *Paciente / Cliente:* ${paciente}
 *Edad:* ${edad ? `${edad} años` : "No especificado"}
 *Prioridad:* ${prioridad}
+*Tipo de traslado:* ${esIdaYVuelta ? "Ida y vuelta" : "Solo ida"}
 
 🩺 *INFORMACIÓN MÉDICA*
 *Diagnóstico:* ${diagnostico || "No registrado"}
-*Síntomas:* ${sintomas || "No registrado"}
+*Síntomas actuales:* ${sintomas || "No registrado"}
 *Enfermedad de fondo:* ${enfermedadFondo || "No registrada"}
 *Tratamiento actual:* ${tratamientoActual || "No registrado"}
 *Oxígeno:* ${requiereOxigeno}${requiereOxigeno === "Si" && litrosOxigeno ? ` - ${litrosOxigeno} LPM` : ""}

@@ -5,7 +5,7 @@ import {
   Users,
   Siren,
   Truck,
-  BriefcaseMedical,
+  Database,
   UserRoundCog,
 } from "lucide-react";
 
@@ -49,8 +49,8 @@ export default function Sidebar() {
           href="/servicios"
           className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
         >
-          <BriefcaseMedical size={20} />
-          Servicios detallados
+          <Database size={20} />
+          Base datos
         </Link>
 
         <Link

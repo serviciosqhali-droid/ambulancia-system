@@ -281,6 +281,7 @@ export default function NuevoServicioPage() {
           edad={edad}
           origen={origen}
           destinos={destinos}
+          esIdaYVuelta={esIdaYVuelta}
           diagnostico={diagnostico}
           enfermedadFondo={enfermedadFondo}
           sintomas={sintomas}
