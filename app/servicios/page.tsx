@@ -43,7 +43,13 @@ export default async function ServiciosPage() {
     ...s,
     // Convertir fechas a string de forma segura para evitar problemas de serialización en Server Components
     createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt ? s.updatedAt.toISOString() : null,
     fechaHora: s.fechaHora ? s.fechaHora.toISOString() : null,
+    horaSalidaBase: s.horaSalidaBase ? s.horaSalidaBase.toISOString() : null,
+    horaLlegadaRecojo: s.horaLlegadaRecojo ? s.horaLlegadaRecojo.toISOString() : null,
+    horaInicioTraslado: s.horaInicioTraslado ? s.horaInicioTraslado.toISOString() : null,
+    horaLlegadaDestino: s.horaLlegadaDestino ? s.horaLlegadaDestino.toISOString() : null,
+    horaTermino: s.horaTermino ? s.horaTermino.toISOString() : null,
   }));
 
   return (

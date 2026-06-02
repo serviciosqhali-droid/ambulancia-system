@@ -53,8 +53,21 @@ model Servicio {
   metodoPago         String?
   estado             String?
   fechaHora          DateTime?
+  comprobanteTipo    String?
+  comprobanteNumero  String?
+  horaSalidaBase     DateTime?
+  horaLlegadaRecojo  DateTime?
+  horaInicioTraslado DateTime?
+  horaLlegadaDestino DateTime?
+  horaTermino        DateTime?
+  minutosEspera      Int?      @default(0)
+  costoEspera        Float?    @default(0)
+  alquilerCamilla    Boolean   @default(false)
+  camillaHoras       Int?
+  costoCamilla       Float?    @default(0)
   notas              String?
   createdAt          DateTime  @default(now())
+  updatedAt          DateTime? @updatedAt
 }
 
 model Ambulancia {
@@ -64,5 +77,21 @@ model Ambulancia {
   tipo      String   // E.g., Tipo I, Tipo II, Tipo III, SAMU
   estado    String   // E.g., Disponible, En Servicio, Mantenimiento
   createdAt DateTime @default(now())
+}
+
+model TripulacionDiaria {
+  id              Int      @id @default(autoincrement())
+  fecha           DateTime
+  nombre          String
+  ambulancia      String
+  piloto          String
+  licenciado      String?
+  medico          String?
+  personalAdicional String?
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([fecha, nombre])
 }
 

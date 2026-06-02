@@ -57,7 +57,7 @@ export default function NuevoServicioPage() {
         alert("Por favor, ingrese el nombre completo del paciente.");
         return;
       }
-      if (!edad.trim()) {
+      if (tipoServicio === "Traslado" && !edad.trim()) {
         alert("Por favor, ingrese la edad del paciente.");
         return;
       }
@@ -125,7 +125,7 @@ export default function NuevoServicioPage() {
         },
         body: JSON.stringify({
           paciente,
-          edad: Number(edad),
+          edad: edad ? Number(edad) : null,
           peso: peso ? Number(peso) : null,
           tipoServicio,
           origen,
@@ -224,6 +224,7 @@ export default function NuevoServicioPage() {
       {servicioSeleccionado && pasoActual === 2 && (
         <PasoPaciente
           paciente={paciente}
+          tipoServicio={tipoServicio}
           setPaciente={setPaciente}
           edad={edad}
           setEdad={setEdad}
@@ -280,6 +281,12 @@ export default function NuevoServicioPage() {
           edad={edad}
           origen={origen}
           destinos={destinos}
+          diagnostico={diagnostico}
+          enfermedadFondo={enfermedadFondo}
+          sintomas={sintomas}
+          tratamientoActual={tratamientoActual}
+          requiereOxigeno={requiereOxigeno}
+          litrosOxigeno={litrosOxigeno}
           contacto={contacto}
           setContacto={setContacto}
           email={email}

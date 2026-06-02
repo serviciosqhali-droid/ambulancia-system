@@ -6,6 +6,7 @@ import {
   Siren,
   Truck,
   BriefcaseMedical,
+  UserRoundCog,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -49,7 +50,7 @@ export default function Sidebar() {
           className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
         >
           <BriefcaseMedical size={20} />
-          Servicios
+          Servicios detallados
         </Link>
 
         <Link
@@ -61,11 +62,11 @@ export default function Sidebar() {
         </Link>
 
         <Link
-          href="/emergencias"
+          href="/tripulaciones"
           className="w-full flex items-center gap-3 hover:bg-red-600 p-3 rounded-xl transition"
         >
-          <Ambulance />
-          Emergencias
+          <UserRoundCog />
+          Tripulación diaria
         </Link>
 
       </nav>

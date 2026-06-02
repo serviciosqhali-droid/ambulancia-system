@@ -1,5 +1,6 @@
 interface Props {
   paciente: string;
+  tipoServicio: string;
   setPaciente: (value: string) => void;
   edad: string;
   setEdad: (value: string) => void;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function PasoPaciente({
   paciente,
+  tipoServicio,
   setPaciente,
   edad,
   setEdad,
@@ -22,15 +24,15 @@ export default function PasoPaciente({
   return (
     <div className="bg-white rounded-2xl shadow p-8 mt-8">
       <h2 className="text-2xl font-bold mb-8">
-        Información del Paciente
+        {tipoServicio === "Evento" ? "Información del Cliente / Evento" : "Información del Paciente"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block mb-2 font-medium text-gray-700">Nombre completo *</label>
+          <label className="block mb-2 font-medium text-gray-700">{tipoServicio === "Evento" ? "Empresa u organizador *" : "Nombre completo del paciente *"}</label>
           <input
             type="text"
-            placeholder="Nombre completo"
+            placeholder={tipoServicio === "Evento" ? "Ej: Empresa Eventos S.A." : "Ej: Juan Pérez"}
             value={paciente}
             onChange={(e) => setPaciente(e.target.value)}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500"
@@ -39,14 +41,14 @@ export default function PasoPaciente({
         </div>
 
         <div>
-          <label className="block mb-2 font-medium text-gray-700">Edad (Años) *</label>
+          <label className="block mb-2 font-medium text-gray-700">{tipoServicio === "Evento" ? "Edad (opcional)" : "Edad (Años) *"}</label>
           <input
             type="number"
             placeholder="Ej: 45"
             value={edad}
             onChange={(e) => setEdad(e.target.value)}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500"
-            required
+            required={tipoServicio === "Traslado"}
           />
         </div>
 

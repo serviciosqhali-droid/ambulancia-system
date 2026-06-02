@@ -11,6 +11,12 @@ interface Props {
   edad: string;
   origen: string;
   destinos: string[];
+  diagnostico: string;
+  enfermedadFondo: string;
+  sintomas: string;
+  tratamientoActual: string;
+  requiereOxigeno: string;
+  litrosOxigeno: string;
   contacto: string;
   setContacto: (value: string) => void;
   email: string;
@@ -51,6 +57,12 @@ export default function PasoContactoCosto({
   edad,
   origen,
   destinos,
+  diagnostico,
+  enfermedadFondo,
+  sintomas,
+  tratamientoActual,
+  requiereOxigeno,
+  litrosOxigeno,
   contacto,
   setContacto,
   email,
@@ -122,27 +134,38 @@ export default function PasoContactoCosto({
 
   function actualizarTelefono(index: number, value: string) {
     const nuevos = [...telefonos];
-    nuevos[index] = value;
+    nuevos[index] = value.replace(/\D/g, "").slice(0, 9);
     setTelefonos(nuevos);
   }
 
   function generarMensajeWhatsapp() {
     const mensaje = `🚑 *SERVICIO DE ${tipoServicio.toUpperCase()}*
 
-*Paciente:* ${paciente}
+*Paciente / Cliente:* ${paciente}
 *Edad:* ${edad ? `${edad} años` : "No especificado"}
+*Prioridad:* ${prioridad}
+
+🩺 *INFORMACIÓN MÉDICA*
+*Diagnóstico:* ${diagnostico || "No registrado"}
+*Síntomas:* ${sintomas || "No registrado"}
+*Enfermedad de fondo:* ${enfermedadFondo || "No registrada"}
+*Tratamiento actual:* ${tratamientoActual || "No registrado"}
+*Oxígeno:* ${requiereOxigeno}${requiereOxigeno === "Si" && litrosOxigeno ? ` - ${litrosOxigeno} LPM` : ""}
 
 📍 *UBICACIONES*
 *Recojo:* ${origen}
 ${observaciones ? `*Observaciones de recojo:* ${observaciones}\n` : ""}
 *Traslado a:*
 ${destinos
+  .filter(Boolean)
   .map((destino, index) => `${index + 1}. ${destino}`)
   .join("\n")}
 
-👤 *Contacto:* ${contacto || "No especificado"}
+👤 *CONTACTO Y DESPACHO*
+*Contacto:* ${contacto || "No especificado"}
 *Teléfono:* ${telefonos.filter(Boolean).join(" / ") || "No especificado"}
-*Ambulancia Asignada:* ${ambulancia || "Por asignar"}
+*Ambulancia asignada:* ${ambulancia || "Por asignar"}
+*Fecha programada:* ${fechaHora || "No definida"}
 
 💰 *Costo:* S/. ${total.toFixed(2)} (${metodoPago})
 `;
@@ -241,8 +264,9 @@ ${destinos
               <input
                 type="text"
                 value={tel}
-                onChange={(e) => actualizarTelefono(index, e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => actualizarTelefono(index, e.target.value)}
                 placeholder="Ej: 999888777"
+                maxLength={9}
                 className="flex-1 border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500"
                 required
               />
