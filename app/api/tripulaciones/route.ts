@@ -41,6 +41,17 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error("Error obteniendo tripulaciones:", error);
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2021" || error.code === "P2022")
+    ) {
+      return NextResponse.json(
+        { error: "La tabla de tripulaciones no existe en tu base local. Ejecuta: npx prisma db push y reinicia npm run dev." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Error al obtener tripulaciones" },
       { status: 500 }
@@ -109,6 +120,16 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Ya existe una tripulación con ese nombre para la fecha seleccionada." },
         { status: 409 }
+      );
+    }
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2021" || error.code === "P2022")
+    ) {
+      return NextResponse.json(
+        { error: "La tabla de tripulaciones no existe en tu base local. Ejecuta: npx prisma db push y reinicia npm run dev." },
+        { status: 500 }
       );
     }
 

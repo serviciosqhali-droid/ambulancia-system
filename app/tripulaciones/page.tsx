@@ -45,12 +45,16 @@ export default function TripulacionesPage() {
     let ignore = false;
     fetch("/api/tripulaciones?fecha=" + fecha)
       .then(async (response) => {
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          throw new Error("No se pudo consultar tripulaciones. Ejecuta: npx prisma db push, reinicia npm run dev e intenta nuevamente.");
+        }
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "No se pudo cargar tripulaciones");
         return data;
       })
       .then((data: Tripulacion[]) => { if (!ignore) setTripulaciones(data); })
-      .catch((err) => { console.error("Error cargando tripulaciones", err); if (!ignore) setError("No se pudo cargar la tripulación del día."); })
+      .catch((err) => { console.error("Error cargando tripulaciones", err); if (!ignore) setError(err instanceof Error ? err.message : "No se pudo cargar la tripulación del día."); })
       .finally(() => { if (!ignore) setLoading(false); });
     return () => { ignore = true; };
   }, [fecha]);
