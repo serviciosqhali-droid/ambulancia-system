@@ -65,11 +65,14 @@ type EditForm = Record<
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "costoOxigeno" | "costoDestinoAdicional" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
+  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
   string
 > & {
   esIdaYVuelta: boolean;
   alquilerCamilla: boolean;
+  eventoRequiereMedico: boolean;
+  eventoRequiereParamedico: boolean;
+  eventoRequierePiloto: boolean;
 };
 
 const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
@@ -133,6 +136,33 @@ function minutesBetween(start: string, end: string) {
   return Math.ceil((endTime - startTime) / 60000);
 }
 
+function parseEventoPersonal(notas: string | null) {
+  const personal = getEventoDato(notas, "Personal requerido");
+  return {
+    medico: personal.includes("Médico"),
+    paramedico: personal.includes("Paramédico"),
+    piloto: personal.includes("Piloto"),
+  };
+}
+
+function buildEventoNotasFromForm(form: EditForm) {
+  const personal = [
+    form.eventoRequiereMedico ? "Médico" : "",
+    form.eventoRequiereParamedico ? "Paramédico" : "",
+    form.eventoRequierePiloto ? "Piloto" : "",
+  ].filter(Boolean);
+
+  return [
+    "Evento: " + form.paciente,
+    "Tipo de evento: " + (form.referencia || "No especificado"),
+    "Duración: " + (form.eventoDuracion || "0") + " " + (form.eventoUnidad || "Horas"),
+    "Personal requerido: " + (personal.join(" / ") || "No especificado"),
+    form.eventoDetallePersonal ? "Detalle de personal: " + form.eventoDetallePersonal : "",
+    form.observaciones ? "Observaciones: " + form.observaciones : "",
+    form.notas,
+  ].filter(Boolean).join("\n");
+}
+
 function buildEditForm(servicio: Servicio): EditForm {
   return {
     paciente: servicio.paciente || "",
@@ -162,6 +192,9 @@ function buildEditForm(servicio: Servicio): EditForm {
     comprobanteTipo: servicio.comprobanteTipo || "",
     comprobanteNumero: servicio.comprobanteNumero || "",
     direccionEvento: servicio.direccionEvento || "",
+    eventoDuracion: getEventoDato(servicio.notas, "Duración").split(" ")[0] || "",
+    eventoUnidad: getEventoDato(servicio.notas, "Duración").split(" ").slice(1).join(" ") || "Horas",
+    eventoDetallePersonal: getEventoDato(servicio.notas, "Detalle de personal") || "",
     horaSalidaBase: toDatetimeLocal(servicio.horaSalidaBase),
     horaLlegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
     horaInicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
@@ -174,6 +207,9 @@ function buildEditForm(servicio: Servicio): EditForm {
     horaTermino2: toDatetimeLocal(servicio.horaTermino2),
     minutosEspera: servicio.minutosEspera?.toString() || "0",
     alquilerCamilla: servicio.alquilerCamilla,
+    eventoRequiereMedico: parseEventoPersonal(servicio.notas).medico,
+    eventoRequiereParamedico: parseEventoPersonal(servicio.notas).paramedico,
+    eventoRequierePiloto: parseEventoPersonal(servicio.notas).piloto,
     camillaHoras: servicio.camillaHoras?.toString() || "",
     descuento: servicio.descuento?.toString() || "0",
     costoOxigeno: servicio.costoOxigeno?.toString() || "0",
@@ -276,14 +312,15 @@ export default function ServiciosList({ initialServicios }: Props) {
           edad: editForm.edad ? Number(editForm.edad) : null,
           peso: editForm.peso ? Number(editForm.peso) : null,
           litrosOxigeno: editForm.litrosOxigeno ? Number(editForm.litrosOxigeno) : null,
-          costo: Number(editForm.costo) || 0,
+          costo: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costo) || 0,
           minutosEspera: costosEdicion.minutosEspera,
-          costoEspera: costosEdicion.espera,
+          costoEspera: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.espera,
           camillaHoras: editForm.alquilerCamilla && editForm.camillaHoras ? Number(editForm.camillaHoras) : null,
-          costoCamilla: costosEdicion.camilla,
-          descuento: Number(editForm.descuento) || 0,
-          costoOxigeno: editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0,
-          costoDestinoAdicional: Number(editForm.costoDestinoAdicional) || 0,
+          costoCamilla: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.camilla,
+          descuento: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.descuento) || 0,
+          costoOxigeno: editForm.tipoServicio === "Evento" ? 0 : editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0,
+          costoDestinoAdicional: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costoDestinoAdicional) || 0,
+          notas: editForm.tipoServicio === "Evento" ? buildEventoNotasFromForm(editForm) : editForm.notas,
         }),
       });
       const data = await response.json();
@@ -393,84 +430,123 @@ export default function ServiciosList({ initialServicios }: Props) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl p-6 border border-gray-100 max-h-[92vh] overflow-y-auto animate-slideUp">
             <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-              <h3 className="text-2xl font-extrabold text-gray-800">Editar servicio SRV-{String(editingServicio.id).padStart(3, "0")}</h3>
+              <h3 className="text-2xl font-extrabold text-gray-800">{editForm.tipoServicio === "Evento" ? "Editar Alquiler de Evento" : "Editar servicio SRV-" + String(editingServicio.id).padStart(3, "0")}</h3>
               <button onClick={() => setEditingServicio(null)} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors cursor-pointer">X</button>
             </div>
             {error && <div className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Field label="Paciente / Cliente" value={editForm.paciente} onChange={(value) => updateForm("paciente", value)} />
-              <SelectField label="Tipo de servicio" value={editForm.tipoServicio} onChange={(value) => updateForm("tipoServicio", value)} options={["Traslado", "Evento"]} />
-              <Field label="Edad" type="number" value={editForm.edad} onChange={(value) => updateForm("edad", value)} />
-              <Field label="Peso" type="number" value={editForm.peso} onChange={(value) => updateForm("peso", value)} />
-              <Field label="Origen / punto de recojo" value={editForm.origen} onChange={(value) => updateForm("origen", value)} />
-              <Field label="Referencia" value={editForm.referencia} onChange={(value) => updateForm("referencia", value)} />
-              <TextAreaField label="Destinos (uno por línea)" value={editForm.destinos} onChange={(value) => updateForm("destinos", value)} />
-              <TextAreaField label="Observaciones" value={editForm.observaciones} onChange={(value) => updateForm("observaciones", value)} />
-              <Field label="Contacto" value={editForm.contacto} onChange={(value) => updateForm("contacto", value)} />
-              <Field label="Teléfono" value={editForm.telefono} onChange={(value) => updateForm("telefono", value.replace(/\D/g, "").slice(0, 9))} />
-              <Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} />
-              <Field label="Ambulancia asignada" value={editForm.ambulancia} onChange={(value) => updateForm("ambulancia", value.toUpperCase())} />
-              <SelectField label="Prioridad" value={editForm.prioridad} onChange={(value) => updateForm("prioridad", value)} options={["Alta", "Media", "Baja", "Crítica"]} />
-              <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
-              <Field label="Fecha y hora programada" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
-              <SelectField label="Método de pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Yape", "Transferencia", "Efectivo", "Tarjeta"]} />
-            </div>
-
-            <SectionTitle title="Información médica" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Field label="Diagnóstico" value={editForm.diagnostico} onChange={(value) => updateForm("diagnostico", value)} />
-              <Field label="Enfermedad de fondo" value={editForm.enfermedadFondo} onChange={(value) => updateForm("enfermedadFondo", value)} />
-              <TextAreaField label="Síntomas" value={editForm.sintomas} onChange={(value) => updateForm("sintomas", value)} />
-              <TextAreaField label="Tratamiento actual" value={editForm.tratamientoActual} onChange={(value) => updateForm("tratamientoActual", value)} />
-              <SelectField label="Requiere oxígeno" value={editForm.requiereOxigeno} onChange={(value) => updateForm("requiereOxigeno", value)} options={["No", "Si"]} />
-              <Field label="Litros de oxígeno" type="number" value={editForm.litrosOxigeno} onChange={(value) => updateForm("litrosOxigeno", value)} />
-            </div>
-
-            <SectionTitle title="Tiempos del servicio" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <Field label="Salida de ambulancia a recojo" type="datetime-local" value={editForm.horaSalidaBase} onChange={(value) => updateForm("horaSalidaBase", value)} />
-              <Field label="Llegada al punto de recojo" type="datetime-local" value={editForm.horaLlegadaRecojo} onChange={(value) => updateForm("horaLlegadaRecojo", value)} />
-              <Field label="Inicio del traslado" type="datetime-local" value={editForm.horaInicioTraslado} onChange={(value) => updateForm("horaInicioTraslado", value)} />
-              <Field label="Llegada al destino" type="datetime-local" value={editForm.horaLlegadaDestino} onChange={(value) => updateForm("horaLlegadaDestino", value)} />
-              <Field label="Término del servicio" type="datetime-local" value={editForm.horaTermino} onChange={(value) => updateForm("horaTermino", value)} />
-              <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
-                <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
-                <p className="text-2xl font-black text-yellow-700 mt-2">{costosEdicion.minutosEspera} min</p>
-                <p className="text-xs text-yellow-700 mt-1">Desde llegada al destino hasta término del servicio.</p>
+            {editForm.tipoServicio !== "Evento" && (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Field label="Paciente / Cliente" value={editForm.paciente} onChange={(value) => updateForm("paciente", value)} />
+                <SelectField label="Tipo de servicio" value={editForm.tipoServicio} onChange={(value) => updateForm("tipoServicio", value)} options={["Traslado", "Evento"]} />
+                <Field label="Edad" type="number" value={editForm.edad} onChange={(value) => updateForm("edad", value)} />
+                <Field label="Peso" type="number" value={editForm.peso} onChange={(value) => updateForm("peso", value)} />
+                <Field label="Origen / punto de recojo" value={editForm.origen} onChange={(value) => updateForm("origen", value)} />
+                <Field label="Referencia" value={editForm.referencia} onChange={(value) => updateForm("referencia", value)} />
+                <TextAreaField label="Destinos (uno por línea)" value={editForm.destinos} onChange={(value) => updateForm("destinos", value)} />
+                <TextAreaField label="Observaciones" value={editForm.observaciones} onChange={(value) => updateForm("observaciones", value)} />
+                <Field label="Contacto" value={editForm.contacto} onChange={(value) => updateForm("contacto", value)} />
+                <Field label="Teléfono" value={editForm.telefono} onChange={(value) => updateForm("telefono", value.replace(/\D/g, "").slice(0, 9))} />
+                <Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} />
+                <Field label="Ambulancia asignada" value={editForm.ambulancia} onChange={(value) => updateForm("ambulancia", value.toUpperCase())} />
+                <SelectField label="Prioridad" value={editForm.prioridad} onChange={(value) => updateForm("prioridad", value)} options={["Alta", "Media", "Baja", "Crítica"]} />
+                <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
+                <Field label="Fecha y hora programada" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
+                <SelectField label="Método de pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Yape", "Transferencia", "Efectivo", "Tarjeta"]} />
               </div>
-            </div>
+            )}
 
-            <SectionTitle title="Segundo traslado (opcional)" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <Field label="Salida de ambulancia a segundo recojo" type="datetime-local" value={editForm.horaSalidaBase2} onChange={(value) => updateForm("horaSalidaBase2", value)} />
-              <Field label="Llegada al segundo recojo" type="datetime-local" value={editForm.horaLlegadaRecojo2} onChange={(value) => updateForm("horaLlegadaRecojo2", value)} />
-              <Field label="Inicio segundo traslado" type="datetime-local" value={editForm.horaInicioTraslado2} onChange={(value) => updateForm("horaInicioTraslado2", value)} />
-              <Field label="Llegada segundo destino" type="datetime-local" value={editForm.horaLlegadaDestino2} onChange={(value) => updateForm("horaLlegadaDestino2", value)} />
-              <Field label="Término segundo servicio" type="datetime-local" value={editForm.horaTermino2} onChange={(value) => updateForm("horaTermino2", value)} />
-            </div>
+            {editForm.tipoServicio === "Evento" ? (
+              <>
+                <SectionTitle title="Información del evento" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Field label="Nombre del Evento *" value={editForm.paciente} onChange={(value) => updateForm("paciente", value)} />
+                  <Field label="Tipo de Evento *" value={editForm.referencia} onChange={(value) => updateForm("referencia", value)} />
+                  <Field label="Lugar del Evento *" value={editForm.origen} onChange={(value) => updateForm("origen", value)} />
+                  <Field label="Dirección (opcional)" value={editForm.direccionEvento} onChange={(value) => updateForm("direccionEvento", value)} />
+                </div>
 
-            <SectionTitle title="Costos adicionales y comprobante" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <Field label="Costo base del servicio" type="number" value={editForm.costo} onChange={(value) => updateForm("costo", value)} />
-              <SelectField label="Alquiler de camilla" value={editForm.alquilerCamilla ? editForm.camillaHoras : ""} onChange={(value) => { updateForm("alquilerCamilla", Boolean(value)); updateForm("camillaHoras", value); }} options={["", "4", "6", "12"]} optionLabels={{ "": "No alquila camilla", "4": "4 horas - S/. 350", "6": "6 horas - S/. 400", "12": "12 horas - S/. 750" }} />
-              <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
-              <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
-              <Field label="Descuento (S/.)" type="number" value={editForm.descuento} onChange={(value) => updateForm("descuento", value)} />
-              <Field label="Costo oxígeno (S/.)" type="number" value={editForm.costoOxigeno} onChange={(value) => updateForm("costoOxigeno", value)} />
-              <Field label="Costo por destino adicional (S/.)" type="number" value={editForm.costoDestinoAdicional} onChange={(value) => updateForm("costoDestinoAdicional", value)} />
-              <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
-              <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
-                <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
-                <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
-                <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
-                <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
-                <p className="text-xs text-green-700">Destinos extra ({costosEdicion.destinos}): {money(costosEdicion.destinosExtra)}</p>
-                <p className="text-xs text-green-700">Descuento: -{money(costosEdicion.descuento)}</p>
-                <p className="text-2xl font-black text-green-700 mt-2">Total: {money(costosEdicion.total)}</p>
-              </div>
-            </div>
+                <SectionTitle title="Duración" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <Field label="Cantidad *" type="number" value={editForm.eventoDuracion} onChange={(value) => updateForm("eventoDuracion", value)} />
+                  <SelectField label="Unidad *" value={editForm.eventoUnidad} onChange={(value) => updateForm("eventoUnidad", value)} options={["Horas", "Días"]} />
+                  <Field label="Fecha y Hora de Inicio *" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
+                </div>
 
+                <SectionTitle title="Personal requerido" />
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 text-sm font-semibold text-gray-700"><input type="checkbox" checked={editForm.eventoRequiereMedico} onChange={(e) => updateForm("eventoRequiereMedico", e.target.checked)} /> Requiere Médico</label>
+                  <label className="flex items-center gap-3 text-sm font-semibold text-gray-700"><input type="checkbox" checked={editForm.eventoRequiereParamedico} onChange={(e) => updateForm("eventoRequiereParamedico", e.target.checked)} /> Requiere Paramédico</label>
+                  <label className="flex items-center gap-3 text-sm font-semibold text-gray-700"><input type="checkbox" checked={editForm.eventoRequierePiloto} onChange={(e) => updateForm("eventoRequierePiloto", e.target.checked)} /> Requiere Piloto</label>
+                  <TextAreaField label="Detalle del Personal" value={editForm.eventoDetallePersonal} onChange={(value) => updateForm("eventoDetallePersonal", value)} />
+                </div>
+
+                <SectionTitle title="Información de contacto" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Field label="Nombre del Contacto *" value={editForm.contacto} onChange={(value) => updateForm("contacto", value)} />
+                  <Field label="Teléfono *" value={editForm.telefono} onChange={(value) => updateForm("telefono", value.replace(/\D/g, "").slice(0, 9))} />
+                  <div className="md:col-span-2"><Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} /></div>
+                  <SelectField label="Estado *" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
+                  <SelectField label="Método de Pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Efectivo", "Yape", "Transferencia", "Tarjeta"]} />
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionTitle title="Información médica" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Field label="Diagnóstico" value={editForm.diagnostico} onChange={(value) => updateForm("diagnostico", value)} />
+                  <Field label="Enfermedad de fondo" value={editForm.enfermedadFondo} onChange={(value) => updateForm("enfermedadFondo", value)} />
+                  <TextAreaField label="Síntomas" value={editForm.sintomas} onChange={(value) => updateForm("sintomas", value)} />
+                  <TextAreaField label="Tratamiento actual" value={editForm.tratamientoActual} onChange={(value) => updateForm("tratamientoActual", value)} />
+                  <SelectField label="Requiere oxígeno" value={editForm.requiereOxigeno} onChange={(value) => updateForm("requiereOxigeno", value)} options={["No", "Si"]} />
+                  <Field label="Litros de oxígeno" type="number" value={editForm.litrosOxigeno} onChange={(value) => updateForm("litrosOxigeno", value)} />
+                </div>
+
+                <SectionTitle title="Tiempos del servicio" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <Field label="Salida de ambulancia a recojo" type="datetime-local" value={editForm.horaSalidaBase} onChange={(value) => updateForm("horaSalidaBase", value)} />
+                  <Field label="Llegada al punto de recojo" type="datetime-local" value={editForm.horaLlegadaRecojo} onChange={(value) => updateForm("horaLlegadaRecojo", value)} />
+                  <Field label="Inicio del traslado" type="datetime-local" value={editForm.horaInicioTraslado} onChange={(value) => updateForm("horaInicioTraslado", value)} />
+                  <Field label="Llegada al destino" type="datetime-local" value={editForm.horaLlegadaDestino} onChange={(value) => updateForm("horaLlegadaDestino", value)} />
+                  <Field label="Término del servicio" type="datetime-local" value={editForm.horaTermino} onChange={(value) => updateForm("horaTermino", value)} />
+                  <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
+                    <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
+                    <p className="text-2xl font-black text-yellow-700 mt-2">{costosEdicion.minutosEspera} min</p>
+                    <p className="text-xs text-yellow-700 mt-1">Desde llegada al destino hasta término del servicio.</p>
+                  </div>
+                </div>
+
+                <SectionTitle title="Segundo traslado (opcional)" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <Field label="Salida de ambulancia a segundo recojo" type="datetime-local" value={editForm.horaSalidaBase2} onChange={(value) => updateForm("horaSalidaBase2", value)} />
+                  <Field label="Llegada al segundo recojo" type="datetime-local" value={editForm.horaLlegadaRecojo2} onChange={(value) => updateForm("horaLlegadaRecojo2", value)} />
+                  <Field label="Inicio segundo traslado" type="datetime-local" value={editForm.horaInicioTraslado2} onChange={(value) => updateForm("horaInicioTraslado2", value)} />
+                  <Field label="Llegada segundo destino" type="datetime-local" value={editForm.horaLlegadaDestino2} onChange={(value) => updateForm("horaLlegadaDestino2", value)} />
+                  <Field label="Término segundo servicio" type="datetime-local" value={editForm.horaTermino2} onChange={(value) => updateForm("horaTermino2", value)} />
+                </div>
+
+                <SectionTitle title="Costos adicionales y comprobante" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <Field label="Costo base del servicio" type="number" value={editForm.costo} onChange={(value) => updateForm("costo", value)} />
+                  <SelectField label="Alquiler de camilla" value={editForm.alquilerCamilla ? editForm.camillaHoras : ""} onChange={(value) => { updateForm("alquilerCamilla", Boolean(value)); updateForm("camillaHoras", value); }} options={["", "4", "6", "12"]} optionLabels={{ "": "No alquila camilla", "4": "4 horas - S/. 350", "6": "6 horas - S/. 400", "12": "12 horas - S/. 750" }} />
+                  <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
+                  <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
+                  <Field label="Descuento (S/.)" type="number" value={editForm.descuento} onChange={(value) => updateForm("descuento", value)} />
+                  <Field label="Costo oxígeno (S/.)" type="number" value={editForm.costoOxigeno} onChange={(value) => updateForm("costoOxigeno", value)} />
+                  <Field label="Costo por destino adicional (S/.)" type="number" value={editForm.costoDestinoAdicional} onChange={(value) => updateForm("costoDestinoAdicional", value)} />
+                  <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
+                  <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
+                    <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
+                    <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
+                    <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
+                    <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
+                    <p className="text-xs text-green-700">Destinos extra ({costosEdicion.destinos}): {money(costosEdicion.destinosExtra)}</p>
+                    <p className="text-xs text-green-700">Descuento: -{money(costosEdicion.descuento)}</p>
+                    <p className="text-2xl font-black text-green-700 mt-2">Total: {money(costosEdicion.total)}</p>
+                  </div>
+                </div>
+              </>
+            )}
             <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-100">
               <button type="button" onClick={() => setEditingServicio(null)} className="border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold px-6 py-3 rounded-2xl transition-colors cursor-pointer">Cancelar</button>
               <button type="button" disabled={saving} onClick={guardarEdicion} className="bg-red-600 hover:bg-red-500 disabled:bg-red-300 text-white font-semibold px-6 py-3 rounded-2xl transition-colors cursor-pointer">{saving ? "Guardando..." : "Guardar cambios"}</button>
