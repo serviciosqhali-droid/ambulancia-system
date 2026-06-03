@@ -13,6 +13,7 @@ export default function PersonalPage() {
   const [form, setForm] = useState(initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/personal").then((response) => response.ok ? response.json() : []).then(setItems).catch((err) => console.error("Error cargando personal", err));
@@ -27,11 +28,35 @@ export default function PersonalPage() {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/personal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const url = editingId
+  ? `/api/personal/${editingId}`
+  : "/api/personal";
+
+const method = editingId ? "PUT" : "POST";
+
+const response = await fetch(url, {
+  method,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(form),
+});
+      
       const data = await response.json();
       if (!response.ok) { setError(data.error || "No se pudo guardar personal."); return; }
-      setItems((current) => [data, ...current]);
+      if (editingId) {
+  setItems((current) =>
+    current.map((item) =>
+      item.id === editingId ? data : item
+    )
+  );
+
+  setEditingId(null);
+} else {
+  setItems((current) => [data, ...current]);
+}
       setForm(initial);
+      setEditingId(null);
     } catch (err) {
       console.error("Error guardando personal", err);
       setError("Error de conexión.");
@@ -40,6 +65,53 @@ export default function PersonalPage() {
     }
   }
 
+async function eliminar(id: number) {
+  if (!confirm("¿Desea eliminar este registro?")) return;
+
+  try {
+    const response = await fetch(`/api/personal/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("No se pudo eliminar");
+    }
+
+    setItems((current) =>
+      current.filter((item) => item.id !== id)
+    );
+  } catch (error) {
+    console.error(error);
+    alert("Error eliminando personal");
+  }
+}
+
+function editar(item: Personal) {
+  setEditingId(item.id);
+
+  setForm({
+    nombres: item.nombres || "",
+    tipoDocumento: item.tipoDocumento || "",
+    documento: item.documento || "",
+    celular: item.celular || "",
+    cuentaBancaria: item.cuentaBancaria || "",
+    cci: item.cci || "",
+    banco: item.banco || "",
+    yape: item.yape || "",
+    fechaNacimiento: item.fechaNacimiento
+      ? item.fechaNacimiento.substring(0, 10)
+      : "",
+    contactoEmergencia: item.contactoEmergencia || "",
+    direccion: item.direccion || "",
+    cvArchivo: item.cvArchivo || "",
+    certificadosArchivo: item.certificadosArchivo || "",
+  });
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}
   return (
     <DashboardLayout>
       <div><h1 className="text-4xl font-black text-gray-800 flex items-center gap-3"><UserPlus className="text-red-600" />Personal Qhali Kay</h1><p className="text-gray-500 mt-2">Registro del personal que trabaja contigo.</p></div>
@@ -60,9 +132,36 @@ export default function PersonalPage() {
           <label className="block"><span className="mb-1.5 block text-sm font-semibold text-gray-700">Adjuntar CV</span><input type="file" onChange={(e) => setField("cvArchivo", e.target.files?.[0]?.name || "")} className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm" /><p className="text-xs text-gray-400 mt-1">{form.cvArchivo}</p></label>
           <label className="block"><span className="mb-1.5 block text-sm font-semibold text-gray-700">Adjuntar certificados</span><input type="file" multiple onChange={(e) => setField("certificadosArchivo", Array.from(e.target.files || []).map((file) => file.name).join(" / "))} className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm" /><p className="text-xs text-gray-400 mt-1">{form.certificadosArchivo}</p></label>
         </div>
-        <button disabled={saving} className="mt-6 rounded-2xl bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-500 disabled:bg-red-300">{saving ? "Guardando..." : "Guardar personal"}</button>
+        <button disabled={saving} className="mt-6 rounded-2xl bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-500 disabled:bg-red-300">
+            {saving ? "Guardando..." : editingId ? "Actualizar personal" : "Guardar personal"}
+          </button>
+        
       </form>
-      <div className="mt-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"><h2 className="text-2xl font-black text-gray-800 mb-5">Personal registrado</h2>{items.length === 0 ? <p className="py-8 text-center text-gray-400">No hay personal registrado.</p> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => <div key={item.id} className="rounded-2xl border border-gray-100 p-5"><h3 className="font-black text-gray-800">{item.nombres}</h3><p className="text-sm text-gray-500">{item.tipoDocumento || "Doc"} {item.documento || "-"}</p><p className="text-sm text-gray-500">Celular: {item.celular}</p><p className="text-sm text-gray-500">Banco: {item.banco || "-"} / CCI: {item.cci || "-"}</p><p className="text-sm text-gray-500">Yape: {item.yape || "-"}</p><p className="text-sm text-gray-500">CV: {item.cvArchivo || "-"}</p><p className="text-sm text-gray-500">Certificados: {item.certificadosArchivo || "-"}</p></div>)}</div>}</div>
+      <div className="mt-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"><h2 className="text-2xl font-black text-gray-800 mb-5">Personal registrado</h2>{items.length === 0 ? <p className="py-8 text-center text-gray-400">No hay personal registrado.</p> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((item) => 
+        <div key={item.id} className="rounded-2xl border border-gray-100 p-5">
+          <h3 className="font-black text-gray-800">{item.nombres}</h3>
+            <p className="text-sm text-gray-500">{item.tipoDocumento || "Doc"} {item.documento || "-"}</p>
+            <p className="text-sm text-gray-500">Celular: {item.celular}</p>
+            <p className="text-sm text-gray-500">Banco: {item.banco || "-"} / CCI: {item.cci || "-"}</p>
+            <p className="text-sm text-gray-500">Yape: {item.yape || "-"}</p>
+            <p className="text-sm text-gray-500">CV: {item.cvArchivo || "-"}</p>
+            <p className="text-sm text-gray-500">Certificados: {item.certificadosArchivo || "-"}</p>
+            <div className="mt-3 flex gap-2">
+  <button
+    onClick={() => editar(item)}
+    className="rounded-xl bg-blue-600 px-3 py-2 text-white"
+  >
+    Editar
+  </button>
+
+  <button
+    onClick={() => eliminar(item.id)}
+    className="rounded-xl bg-red-600 px-3 py-2 text-white"
+  >
+    Eliminar
+  </button>
+</div>
+            </div>)}</div>}</div>
     </DashboardLayout>
   );
 }
