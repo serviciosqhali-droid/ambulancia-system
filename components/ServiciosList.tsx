@@ -1,7 +1,7 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
-import { AlertCircle, Calendar, Clock, Copy, Edit3, Eye, FileText, Phone, Search, Stethoscope, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Search, User } from "lucide-react";
 
 interface Servicio {
   id: number;
@@ -609,45 +609,145 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   return <div><p className="text-xs font-bold text-gray-400">{label}</p><p className="mt-1 font-bold text-gray-900">{value}</p></div>;
 }
 
+function buildTrasladoWhatsapp(servicio: Servicio) {
+  const destinos = parseDestinos(servicio.destinos);
+  return [
+    "🚑 *SERVICIO DE TRASLADO*",
+    "",
+    `*Paciente:* ${servicio.paciente}`,
+    servicio.edad ? `*Edad:* ${servicio.edad} años` : "",
+    "",
+    "📍 *UBICACIONES*",
+    `*Recojo:* ${servicio.origen}`,
+    servicio.referencia ? `*Referencia:* ${servicio.referencia}` : "",
+    "",
+    "*Traslado a:*",
+    ...destinos.map((destino, index) => `${index + 1}. ${destino}`),
+    servicio.sintomas ? `*Síntomas:* ${servicio.sintomas}` : "",
+    servicio.diagnostico ? `*Diagnóstico:* ${servicio.diagnostico}` : "",
+    servicio.enfermedadFondo ? `*Enfermedad de fondo:* ${servicio.enfermedadFondo}` : "",
+    servicio.tratamientoActual ? `*Tratamiento actual:* ${servicio.tratamientoActual}` : "",
+    "",
+    "👤 *Contacto*",
+    `*Nombre:* ${servicio.contacto || "No especificado"}`,
+    `*Teléfono:* ${servicio.telefono || "No especificado"}`,
+    "",
+    `💰 *Costo:* ${money((servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0))}`,
+  ].filter(Boolean).join("\n");
+}
+
 function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClose: () => void; onEdit: () => void }) {
   if (servicio.tipoServicio === "Evento") {
     return <DetalleEventoModal servicio={servicio} onClose={onClose} onEdit={onEdit} />;
   }
+
+  const destinos = parseDestinos(servicio.destinos);
   const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+  const mensaje = buildTrasladoWhatsapp(servicio);
+
+  async function copiarWhatsapp() {
+    await navigator.clipboard.writeText(mensaje);
+    alert("Mensaje copiado para WhatsApp");
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white rounded-3xl w-full max-w-3xl shadow-2xl p-6 border border-gray-100 max-h-[90vh] overflow-y-auto animate-slideUp">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4 gap-4">
-          <h3 className="text-2xl font-extrabold text-gray-800">Detalles del Servicio <span className="text-sm bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded-lg">SRV-{String(servicio.id).padStart(3, "0")}</span></h3>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onEdit} className="bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer flex items-center gap-2">
-              <Edit3 size={16} /> Editar servicio
-            </button>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors cursor-pointer">X</button>
+      <div className="bg-gray-50 rounded-3xl w-full max-w-5xl shadow-2xl border border-gray-100 max-h-[92vh] overflow-y-auto animate-slideUp">
+        <div className="p-4 flex items-center gap-3">
+          <button type="button" onClick={onClose} className="text-sm font-bold text-gray-700 hover:text-gray-900">← Volver</button>
+          <button type="button" onClick={onEdit} className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500 flex items-center gap-2"><Edit3 size={14} /> Editar Servicio</button>
+        </div>
+
+        <div className="mx-4 h-40 rounded-2xl overflow-hidden bg-gradient-to-r from-slate-950 via-slate-800 to-yellow-500 relative">
+          <div className="absolute inset-0 bg-black/35" />
+          <div className="absolute bottom-4 left-5 text-white">
+            <p className="text-xs font-bold uppercase tracking-wider">Qhali Kay Ambulancias</p>
+            <h3 className="text-2xl font-black">Detalle del traslado</h3>
           </div>
         </div>
-        <div className="mt-6 space-y-6 text-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Info title="Paciente / Cliente" lines={[servicio.paciente, servicio.edad ? "Edad: " + servicio.edad + " años" : "", servicio.peso ? "Peso: " + servicio.peso + " kg" : ""]} />
-            <Info title="Estado y programación" lines={[servicio.estado || "No registrado", "Fecha: " + formatDate(servicio.fechaHora), servicio.ambulancia ? "Unidad: " + servicio.ambulancia : ""]} />
+
+        <div className="mx-4 -mt-1 rounded-b-2xl bg-white border border-t-0 border-gray-200 p-5">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white">TRASLADO</span>
+                <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">{servicio.estado || "Cotización"}</span>
+              </div>
+              <h2 className="mt-3 text-2xl font-black text-gray-900">{servicio.paciente}</h2>
+              <p className="text-sm text-gray-500">ID: {serviceCode(servicio)} · Registrado el {formatDate(servicio.createdAt)}</p>
+            </div>
+            <button type="button" onClick={copiarWhatsapp} className="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-500 flex items-center gap-2"><Copy size={16} /> Copiar para WhatsApp</button>
           </div>
-          <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
-            <p><span className="font-bold text-red-600">Recojo:</span> {servicio.origen}</p>
-            {servicio.referencia && <p className="text-sm text-gray-500">Referencia: {servicio.referencia}</p>}
-            <p><span className="font-bold text-blue-600">Destinos:</span> {parseDestinos(servicio.destinos).join(" -> ")}</p>
+        </div>
+
+        <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="lg:col-span-2 space-y-5">
+            <section className="rounded-2xl bg-white border border-gray-200 p-5">
+              <h4 className="font-black text-gray-900">Información del Paciente</h4>
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
+                <DetailItem label="Nombre" value={servicio.paciente} />
+                <DetailItem label="Edad" value={servicio.edad ? servicio.edad + " años" : "No especificada"} />
+              </div>
+              <button type="button" className="mt-5 rounded-lg border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50">Ver Historial del Paciente</button>
+            </section>
+
+            <section className="rounded-2xl bg-white border border-gray-200 p-5">
+              <h4 className="font-black text-gray-900">Ubicaciones del Traslado</h4>
+              <div className="mt-5 space-y-4">
+                <div className="rounded-2xl bg-red-50 p-4 text-sm">
+                  <p className="font-bold text-red-600">📍 Punto de Recojo</p>
+                  <p className="mt-1 font-black text-gray-900">{servicio.origen}</p>
+                  {servicio.referencia && <p className="mt-1 text-xs text-gray-600">Referencia: {servicio.referencia}</p>}
+                </div>
+                {destinos.map((destino, index) => (
+                  <div key={index} className="rounded-2xl bg-green-50 p-4 text-sm">
+                    <p className="font-bold text-green-700">📍 Destino {index + 1}</p>
+                    <p className="mt-1 font-black text-gray-900">{destino}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-2xl bg-white border border-gray-200 p-5">
+              <h4 className="font-black text-gray-900">Información Médica</h4>
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <DetailItem label="Síntomas" value={servicio.sintomas || "No registrado"} />
+                <DetailItem label="Diagnóstico" value={servicio.diagnostico || "No registrado"} />
+                <DetailItem label="Enfermedad de fondo" value={servicio.enfermedadFondo || "No registrada"} />
+                <DetailItem label="Tratamiento actual" value={servicio.tratamientoActual || "No registrado"} />
+                <DetailItem label="Oxígeno" value={(servicio.requiereOxigeno || "No") + (servicio.litrosOxigeno ? " - " + servicio.litrosOxigeno + " LPM" : "")} />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
+              <h4 className="font-black text-gray-900">Mensaje para WhatsApp</h4>
+              <p className="mt-1 text-xs text-gray-500">Este es el mensaje que se copiará al hacer clic en Copiar para WhatsApp.</p>
+              <pre className="mt-4 whitespace-pre-wrap rounded-2xl bg-white p-4 text-sm text-gray-700">{mensaje}</pre>
+              <button type="button" onClick={copiarWhatsapp} className="mt-4 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white hover:bg-green-500 flex items-center justify-center gap-2"><Copy size={16} /> Copiar Mensaje</button>
+            </section>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-            <Info icon={<Stethoscope size={14} />} title="Información médica" lines={["Diagnóstico: " + (servicio.diagnostico || "No registrado"), "Síntomas: " + (servicio.sintomas || "No registrado"), "Enfermedad de fondo: " + (servicio.enfermedadFondo || "No registrada"), "Tratamiento actual: " + (servicio.tratamientoActual || "No registrado"), "Oxígeno: " + (servicio.requiereOxigeno || "No") + (servicio.litrosOxigeno ? " (" + servicio.litrosOxigeno + " LPM)" : "")]} />
-            <Info icon={<Clock size={14} />} title="Tiempos operativos" lines={["Salida base: " + formatDate(servicio.horaSalidaBase), "Llegada recojo: " + formatDate(servicio.horaLlegadaRecojo), "Inicio traslado: " + formatDate(servicio.horaInicioTraslado), "Llegada destino: " + formatDate(servicio.horaLlegadaDestino), "Término: " + formatDate(servicio.horaTermino)]} />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-            <Info title="Contacto despacho" lines={[servicio.contacto || "No especificado", "Tel: " + (servicio.telefono || "No especificado"), servicio.email || ""]} />
-            <Info icon={<FileText size={14} />} title="Facturación y costos" lines={["Total: " + money(total), "Servicio base: " + money(servicio.costo), "Espera: " + (servicio.minutosEspera || 0) + " min - " + money(servicio.costoEspera), "Camilla: " + (servicio.alquilerCamilla ? String(servicio.camillaHoras) + "h - " + money(servicio.costoCamilla) : "No"), "Oxígeno: " + money(servicio.costoOxigeno), "Destinos adicionales: " + money(servicio.costoDestinoAdicional), "Descuento: -" + money(servicio.descuento), "Comprobante: " + (servicio.comprobanteTipo && servicio.comprobanteNumero ? servicio.comprobanteTipo + " " + servicio.comprobanteNumero : "No registrado")]} />
-          </div>
-          {servicio.observaciones && <p className="border-t border-gray-100 pt-4 text-sm text-gray-700 italic">{servicio.observaciones}</p>}
-          <div className="flex justify-end gap-4 mt-8 pt-4 border-t border-gray-100">
-            <button type="button" onClick={onEdit} className="bg-red-600 hover:bg-red-500 text-white font-semibold px-6 py-3 rounded-2xl transition-colors cursor-pointer flex items-center gap-2"><Edit3 size={16} /> Editar servicio</button>
-            <button type="button" onClick={onClose} className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-2xl transition-colors cursor-pointer">Cerrar</button>
+
+          <div className="space-y-5">
+            <section className="rounded-2xl bg-white border border-gray-200 p-5">
+              <h4 className="font-black text-gray-900">Contacto</h4>
+              <div className="mt-5 space-y-4 text-sm">
+                <DetailItem label="Nombre" value={servicio.contacto || "No especificado"} />
+                <DetailItem label="Teléfono" value={servicio.telefono || "No especificado"} />
+                {servicio.email && <DetailItem label="Email" value={servicio.email} />}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
+              <h4 className="font-black text-gray-900">Costo del Servicio</h4>
+              <p className="mt-5 text-4xl font-black text-green-700">$ {money(total).replace("S/. ", "S/. ")}</p>
+            </section>
+
+            <section className="rounded-2xl bg-white border border-gray-200 p-5">
+              <h4 className="font-black text-gray-900">Estado del Servicio</h4>
+              <p className="mt-4 rounded-xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700">{servicio.estado || "Cotización"}</p>
+              <p className="mt-3 text-xs text-gray-400">Creado: {formatDate(servicio.createdAt)}</p>
+              <p className="text-xs text-gray-400">Actualizado: {formatDate(servicio.updatedAt)}</p>
+            </section>
           </div>
         </div>
       </div>
@@ -655,14 +755,6 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
   );
 }
 
-function Info({ title, lines, icon }: { title: string; lines: string[]; icon?: ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs text-gray-400 font-bold uppercase flex items-center gap-1">{icon}{title}</p>
-      {lines.filter(Boolean).map((line) => <p key={line} className="text-sm text-gray-700">{line}</p>)}
-    </div>
-  );
-}
 
 function SectionTitle({ title }: { title: string }) {
   return <h4 className="mt-8 mb-4 text-lg font-black text-gray-800 border-t border-gray-100 pt-6">{title}</h4>;
