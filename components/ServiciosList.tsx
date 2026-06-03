@@ -101,6 +101,30 @@ function money(value: number | null | undefined) {
   return "S/. " + (value || 0).toFixed(2);
 }
 
+function serviceCode(servicio: Servicio) {
+  return (servicio.tipoServicio === "Evento" ? "ALQ" : "SRV") + "-" + String(servicio.id).padStart(3, "0");
+}
+
+function shortDate(value: string | null) {
+  const source = value ? new Date(value) : null;
+  if (!source || Number.isNaN(source.getTime())) return "Sin fecha";
+  return source.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
+}
+
+function tipoBadgeClass(tipo: string) {
+  return tipo === "Evento"
+    ? "border-blue-200 bg-blue-50 text-blue-700"
+    : "border-orange-200 bg-orange-50 text-orange-700";
+}
+
+function estadoBadgeClass(estado: string | null) {
+  if (estado === "Completado") return "border-green-200 bg-green-50 text-green-700";
+  if (estado === "Confirmado") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (estado === "En Curso") return "border-yellow-200 bg-yellow-50 text-yellow-700";
+  if (estado === "Cancelado") return "border-red-200 bg-red-50 text-red-700";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
 function minutesBetween(start: string, end: string) {
   if (!start || !end) return 0;
   const startTime = new Date(start).getTime();
@@ -318,46 +342,44 @@ export default function ServiciosList({ initialServicios }: Props) {
             const destinos = parseDestinos(servicio.destinos);
             const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
             return (
-              <div key={servicio.id} className="bg-white border border-gray-100 hover:border-red-100 rounded-3xl p-6 transition-all hover:shadow-md">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                  <div className="flex flex-col sm:flex-row items-start gap-4 flex-1">
-                    <div className={(servicio.tipoServicio === "Traslado" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600") + " p-4 rounded-2xl flex items-center justify-center font-bold text-2xl"}>🚑</div>
-                    <div className="space-y-2 flex-1">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-2xl font-black text-gray-800">{servicio.paciente}</h2>
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-100">{servicio.tipoServicio}</span>
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-50 text-gray-700 border border-gray-100">{servicio.estado}</span>
+              <div key={servicio.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl px-5 py-4 transition-all hover:shadow-sm">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className={(servicio.tipoServicio === "Evento" ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600") + " h-11 w-11 rounded-2xl flex items-center justify-center shrink-0"}>
+                      {servicio.tipoServicio === "Evento" ? <Calendar size={20} /> : <span className="text-lg">🚑</span>}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-black text-slate-900 leading-tight">{servicio.paciente}</h2>
+                        <span className={"inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold " + tipoBadgeClass(servicio.tipoServicio)}>{servicio.tipoServicio}</span>
+                        <span className={"inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold " + estadoBadgeClass(servicio.estado)}>{servicio.estado || "Cotización"}</span>
                       </div>
-                      <p className="text-gray-600 text-sm font-semibold"><span className="text-red-500 font-bold">Recojo:</span> {servicio.origen}</p>
-                      <p className="text-gray-500 text-sm font-medium"><span className="text-blue-500 font-bold">Destino:</span> {destinos.join(" -> ")}</p>
-                      <div className="flex flex-wrap gap-4 pt-2 text-xs text-gray-400 font-semibold">
-                        <span className="bg-gray-50 px-2 py-1 rounded-lg">SRV-{String(servicio.id).padStart(3, "0")}</span>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {servicio.tipoServicio === "Evento" ? (servicio.referencia || "Evento") + " · " + servicio.origen : (servicio.edad ? servicio.edad + " años · " : "") + "Recojo: " + servicio.origen}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-slate-500">
+                        <span>{serviceCode(servicio)}</span>
                         {servicio.contacto && <span className="flex items-center gap-1"><User size={12} /> {servicio.contacto}</span>}
                         {servicio.telefono && <span className="flex items-center gap-1"><Phone size={12} /> {servicio.telefono}</span>}
-                        {servicio.ambulancia && <span className="bg-red-50 text-red-600 px-2 py-1 rounded-lg">Unidad {servicio.ambulancia}</span>}
-                        {servicio.comprobanteNumero && <span className="bg-green-50 text-green-700 px-2 py-1 rounded-lg">{servicio.comprobanteTipo}: {servicio.comprobanteNumero}</span>}
+                        <span className="flex items-center gap-1">{servicio.tipoServicio === "Evento" ? <Calendar size={12} /> : <span>⌖</span>} {servicio.tipoServicio === "Evento" ? servicio.origen : destinos[0] || "Sin destino"}</span>
+                        <span className="font-black text-green-600">{money(totalServicio)}</span>
+                        <span>{shortDate(servicio.fechaHora || servicio.createdAt)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end justify-between self-stretch lg:self-auto gap-4">
-                    <div className="text-right">
-                      <p className="text-2xl font-black text-green-600">{money(totalServicio)}</p>
-                      <p className="text-xs text-gray-400 font-semibold mt-1 flex items-center gap-1 justify-end"><Calendar size={12} />{servicio.fechaHora ? new Date(servicio.fechaHora).toLocaleDateString() : new Date(servicio.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                      <select
-                        value={servicio.estado || "Cotización"}
-                        onChange={(e) => cambiarEstadoRapido(servicio, e.target.value)}
-                        className="border border-gray-200 bg-white text-gray-700 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus:outline-none focus:border-red-500"
-                        title="Cambiar estado rápido"
-                      >
-                        {estadosServicio.map((estado) => (
-                          <option key={estado} value={estado}>{estado}</option>
-                        ))}
-                      </select>
-                      <button onClick={() => setSelectedServicio(servicio)} className="border border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"><Eye size={14} /> Ver</button>
-                      <button onClick={() => openEdit(servicio)} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"><Edit3 size={14} /> Editar</button>
-                    </div>
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center lg:justify-end">
+                    <select
+                      value={servicio.estado || "Cotización"}
+                      onChange={(e) => cambiarEstadoRapido(servicio, e.target.value)}
+                      className="border border-slate-200 bg-white text-slate-700 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer focus:outline-none focus:border-red-500"
+                      title="Cambiar estado rápido"
+                    >
+                      {estadosServicio.map((estado) => (
+                        <option key={estado} value={estado}>{estado}</option>
+                      ))}
+                    </select>
+                    <button onClick={() => setSelectedServicio(servicio)} className="border border-slate-200 hover:border-slate-300 text-slate-900 hover:bg-slate-50 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"><Eye size={15} /> Ver</button>
+                    <button onClick={() => openEdit(servicio)} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"><Edit3 size={15} /> Editar</button>
                   </div>
                 </div>
               </div>
