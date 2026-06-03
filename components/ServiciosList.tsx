@@ -555,7 +555,7 @@ function DetalleEventoModal({ servicio, onClose, onEdit }: { servicio: Servicio;
 
             <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
               <h4 className="font-black text-gray-900">Mensaje para WhatsApp</h4>
-              <p className="mt-1 text-xs text-gray-500">Este es el mensaje que se copiará al hacer clic en "Copiar para WhatsApp".</p>
+              <p className="mt-1 text-xs text-gray-500">Este es el mensaje que se copiará al hacer clic en Copiar para WhatsApp.</p>
               <pre className="mt-4 whitespace-pre-wrap rounded-2xl bg-white p-4 text-sm text-gray-700">{mensaje}</pre>
             </section>
           </div>
