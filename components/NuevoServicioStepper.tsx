@@ -1,38 +1,25 @@
 interface Props {
   pasoActual: number;
+  tipoServicio?: string;
 }
 
 export default function NuevoServicioStepper({
   pasoActual,
+  tipoServicio = "Traslado",
 }: Props) {
-
-  const pasos = [
-    "Tipo servicio",
-    "Paciente",
-    "Direcciones",
-    "Médico",
-    "Contacto",
-  ];
+  const pasos = tipoServicio === "Evento"
+    ? ["Tipo de servicio", "Evento", "Duración", "Personal", "Contacto"]
+    : ["Tipo servicio", "Paciente", "Direcciones", "Médico", "Contacto"];
 
   return (
-
     <div className="flex items-center gap-4 mt-10 mb-10 flex-wrap">
-
       {pasos.map((paso, index) => {
-
         const numero = index + 1;
-
         const activo = numero === pasoActual;
-
         const completado = numero < pasoActual;
 
         return (
-
-          <div
-            key={numero}
-            className="flex items-center gap-3"
-          >
-
+          <div key={numero} className="flex items-center gap-3">
             <div
               className={`
                 w-10 h-10 rounded-full flex items-center justify-center font-bold
@@ -41,22 +28,14 @@ export default function NuevoServicioStepper({
                 ${!activo && !completado ? "bg-gray-200 text-gray-500" : ""}
               `}
             >
-              {numero}
+              {completado ? "✓" : numero}
             </div>
-
-            <span
-              className={`
-                text-sm font-medium
-                ${activo ? "text-red-600" : "text-gray-500"}
-              `}
-            >
+            <span className={`text-sm font-medium ${activo ? "text-red-600" : "text-gray-500"}`}>
               {paso}
             </span>
-
           </div>
         );
       })}
-
     </div>
   );
 }

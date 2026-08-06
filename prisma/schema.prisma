@@ -10,10 +10,12 @@ datasource db {
 model Paciente {
   id               Int      @id @default(autoincrement())
   nombres          String
-  tipoDocumento    String
-  numeroDocumento  String   @unique
+  tipoDocumento    String?
+  numeroDocumento  String?  @unique
   telefono         String
+  nombreContacto   String?
   direccion        String
+  correo           String?
   createdAt        DateTime @default(now())
 }
 
@@ -53,8 +55,30 @@ model Servicio {
   metodoPago         String?
   estado             String?
   fechaHora          DateTime?
+  comprobanteTipo    String?
+  comprobanteNumero  String?
+  direccionEvento    String?
+  horaSalidaBase     DateTime?
+  horaLlegadaRecojo  DateTime?
+  horaInicioTraslado DateTime?
+  horaLlegadaDestino DateTime?
+  horaTermino        DateTime?
+  horaSalidaBase2     DateTime?
+  horaLlegadaRecojo2  DateTime?
+  horaInicioTraslado2 DateTime?
+  horaLlegadaDestino2 DateTime?
+  horaTermino2        DateTime?
+  minutosEspera      Int?      @default(0)
+  costoEspera        Float?    @default(0)
+  descuento          Float?    @default(0)
+  costoOxigeno       Float?    @default(0)
+  costoDestinoAdicional Float? @default(0)
+  alquilerCamilla    Boolean   @default(false)
+  camillaHoras       Int?
+  costoCamilla       Float?    @default(0)
   notas              String?
   createdAt          DateTime  @default(now())
+  updatedAt          DateTime? @updatedAt
 }
 
 model Ambulancia {
@@ -66,3 +90,39 @@ model Ambulancia {
   createdAt DateTime @default(now())
 }
 
+model TripulacionDiaria {
+  id              Int      @id @default(autoincrement())
+  fecha           DateTime
+  nombre          String
+  ambulancia      String
+  piloto          String
+  licenciado      String?
+  medico          String?
+  personalAdicional String?
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([fecha, nombre])
+}
+
+
+model PersonalQhaliKay {
+  id                  Int      @id @default(autoincrement())
+  nombres             String
+  cargo               String?
+  tipoDocumento       String?
+  documento           String?
+  celular             String
+  cuentaBancaria      String?
+  cci                 String?
+  banco               String?
+  yape                String?
+  fechaNacimiento     DateTime?
+  contactoEmergencia  String?
+  direccion           String?
+  cvArchivo           String?
+  certificadosArchivo String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

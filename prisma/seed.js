@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
@@ -13,7 +14,7 @@ async function main() {
   console.log("Limpieza completada.");
 
   // Crear Ambulancias
-  const amb1 = await prisma.ambulancia.create({
+  await prisma.ambulancia.create({
     data: {
       placa: "EUA-102",
       modelo: "Toyota Hiace 2024",
@@ -22,7 +23,7 @@ async function main() {
     },
   });
 
-  const amb2 = await prisma.ambulancia.create({
+  await prisma.ambulancia.create({
     data: {
       placa: "EUB-405",
       modelo: "Mercedes-Benz Sprinter 2025",
@@ -31,7 +32,7 @@ async function main() {
     },
   });
 
-  const amb3 = await prisma.ambulancia.create({
+  await prisma.ambulancia.create({
     data: {
       placa: "EUC-882",
       modelo: "Hyundai H350 2023",
@@ -40,7 +41,7 @@ async function main() {
     },
   });
 
-  const amb4 = await prisma.ambulancia.create({
+  await prisma.ambulancia.create({
     data: {
       placa: "EUD-311",
       modelo: "Nissan Urvan 2024",
@@ -52,7 +53,7 @@ async function main() {
   console.log("Ambulancias creadas con éxito.");
 
   // Crear Pacientes
-  const pac1 = await prisma.paciente.create({
+  await prisma.paciente.create({
     data: {
       nombres: "Juan Pérez Delgado",
       tipoDocumento: "DNI",
@@ -62,7 +63,7 @@ async function main() {
     },
   });
 
-  const pac2 = await prisma.paciente.create({
+  await prisma.paciente.create({
     data: {
       nombres: "María Rodríguez Quispe",
       tipoDocumento: "DNI",
@@ -72,7 +73,7 @@ async function main() {
     },
   });
 
-  const pac3 = await prisma.paciente.create({
+  await prisma.paciente.create({
     data: {
       nombres: "Carlos García Montes",
       tipoDocumento: "CE",

@@ -4,10 +4,21 @@ import prisma from "@/lib/prisma";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const destinos = Array.isArray(body.destinos)
+      ? body.destinos.filter((destino: unknown) => typeof destino === "string" && destino.trim())
+      : [];
+    const costo = Number(body.costo);
 
-    if (!body.paciente || !body.tipoServicio || !body.origen || !body.destinos || !body.costo) {
+    if (
+      !body.paciente?.trim() ||
+      !body.tipoServicio?.trim() ||
+      !body.origen?.trim() ||
+      destinos.length === 0 ||
+      !Number.isFinite(costo) ||
+      costo < 0
+    ) {
       return NextResponse.json(
-        { error: "Los campos paciente, tipo de servicio, origen, destinos y costo son obligatorios." },
+        { error: "Los campos paciente, tipo de servicio, origen, destinos y costo válido son obligatorios." },
         { status: 400 }
       );
     }
@@ -57,7 +68,27 @@ export async function POST(request: Request) {
 
     // --- REGISTRO DEL SERVICIO ---
     // En SQLite, destinos se guarda como String. Guardamos la representación JSON stringificada.
-    const destinosString = JSON.stringify(body.destinos);
+    const destinosString = JSON.stringify(destinos);
+
+    if (body.ambulancia && body.estado === "En Curso") {
+      const amb = await prisma.ambulancia.findUnique({
+        where: { placa: body.ambulancia },
+      });
+
+      if (!amb) {
+        return NextResponse.json(
+          { error: "La ambulancia seleccionada no existe." },
+          { status: 400 }
+        );
+      }
+
+      if (amb.estado !== "Disponible") {
+        return NextResponse.json(
+          { error: "La ambulancia seleccionada no está disponible para iniciar el servicio." },
+          { status: 409 }
+        );
+      }
+    }
 
     const nuevoServicio = await prisma.servicio.create({
       data: {
@@ -81,10 +112,14 @@ export async function POST(request: Request) {
         contacto: body.contacto ? body.contacto.trim() : null,
         telefono: body.telefono ? body.telefono.trim() : null,
         email: body.email ? body.email.trim() : null,
-        costo: Number(body.costo),
+        costo,
         metodoPago: body.metodoPago || "Yape",
         estado: body.estado || "Cotización",
         fechaHora: body.fechaHora ? new Date(body.fechaHora) : null,
+        direccionEvento: body.direccionEvento ? body.direccionEvento.trim() : null,
+        descuento: body.descuento ? Number(body.descuento) : 0,
+        costoOxigeno: body.costoOxigeno ? Number(body.costoOxigeno) : 0,
+        costoDestinoAdicional: body.costoDestinoAdicional ? Number(body.costoDestinoAdicional) : 0,
         notas: body.notas ? body.notas.trim() : null,
       },
     });

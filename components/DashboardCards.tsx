@@ -54,7 +54,7 @@ export default function DashboardCards() {
       value: stats.emergencias,
       icon: Activity,
       color: "bg-red-500 shadow-red-100",
-      description: "Casos urgentes registrados",
+      description: "Pendientes o en curso",
     },
     {
       title: "Unidades de Ambulancia",

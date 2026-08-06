@@ -4,7 +4,13 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   try {
     const totalPacientes = await prisma.paciente.count();
-    const totalEmergencias = await prisma.emergencia.count();
+    const totalEmergenciasActivas = await prisma.emergencia.count({
+      where: {
+        estado: {
+          in: ["Pendiente", "En camino", "En Curso"],
+        },
+      },
+    });
     const totalAmbulancias = await prisma.ambulancia.count();
     
     // Obtener fecha de inicio del día de hoy
@@ -21,7 +27,7 @@ export async function GET() {
 
     return NextResponse.json({
       pacientes: totalPacientes,
-      emergencias: totalEmergencias,
+      emergencias: totalEmergenciasActivas,
       ambulancias: totalAmbulancias,
       serviciosHoy: serviciosHoy,
     });
