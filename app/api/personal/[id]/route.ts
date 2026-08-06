@@ -48,6 +48,7 @@ export async function PUT(
     },
     data: {
       nombres: body.nombres,
+      cargo: optionalString(body.cargo),
       tipoDocumento: optionalString(body.tipoDocumento),
       documento: optionalString(body.documento),
       celular: body.celular,
@@ -58,6 +59,8 @@ export async function PUT(
       fechaNacimiento: optionalDate(body.fechaNacimiento),
       contactoEmergencia: optionalString(body.contactoEmergencia),
       direccion: optionalString(body.direccion),
+      cvArchivo: optionalString(body.cvArchivo),
+      certificadosArchivo: optionalString(body.certificadosArchivo),
     },
   });
 

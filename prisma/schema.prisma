@@ -110,6 +110,7 @@ model TripulacionDiaria {
 model PersonalQhaliKay {
   id                  Int      @id @default(autoincrement())
   nombres             String
+  cargo               String?
   tipoDocumento       String?
   documento           String?
   celular             String

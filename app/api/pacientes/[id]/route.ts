@@ -46,3 +46,19 @@ export async function PUT(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Error al actualizar cliente." }, { status: 500 });
   }
 }
+
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  try {
+    const id = await resolveId(params);
+    if (Number.isNaN(id)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+
+    await prisma.paciente.delete({ where: { id } });
+    return NextResponse.json({ success: true, message: "Cliente anulado con éxito" });
+  } catch (error) {
+    console.error("Error anulando cliente:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Error al anular cliente." }, { status: 500 });
+  }
+}

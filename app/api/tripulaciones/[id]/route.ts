@@ -4,14 +4,31 @@ import prisma from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> | { id: string } };
 
-const MAX_PERSONAL_ADICIONAL = 2;
+const MAX_PERSONAL = 5;
 
-function parsePersonalAdicional(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value
+function parsePersonal(body: Record<string, unknown>) {
+  const fromArray = Array.isArray(body.personal)
+    ? body.personal
+    : [
+        body.piloto,
+        body.licenciado,
+        body.medico,
+        ...(Array.isArray(body.personalAdicional) ? body.personalAdicional : []),
+      ];
+
+  return fromArray
     .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     .map((item) => item.trim())
-    .slice(0, MAX_PERSONAL_ADICIONAL);
+    .slice(0, MAX_PERSONAL);
+}
+
+function mapPersonalToFields(personal: string[]) {
+  return {
+    piloto: personal[0] || "",
+    licenciado: personal[1] || null,
+    medico: personal[2] || null,
+    personalAdicional: JSON.stringify(personal.slice(3)),
+  };
 }
 
 function startOfDay(value: string) {
@@ -29,33 +46,46 @@ export async function PUT(request: Request, { params }: RouteContext) {
   try {
     const id = await resolveId(params);
     const body = await request.json();
-    const personalAdicional = parsePersonalAdicional(body.personalAdicional);
-    const totalIntegrantes = [body.piloto, body.licenciado, body.medico, ...personalAdicional]
-      .filter((item) => typeof item === "string" && item.trim()).length;
+    const personal = parsePersonal(body);
 
     if (Number.isNaN(id)) return NextResponse.json({ error: "ID inválido" }, { status: 400 });
-    if (!body.fecha || !body.nombre?.trim() || !body.ambulancia?.trim() || !body.piloto?.trim() || !body.licenciado?.trim()) {
-      return NextResponse.json({ error: "Fecha, nombre, ambulancia, piloto y licenciado son obligatorios." }, { status: 400 });
+    if (!body.fecha || !body.nombre?.trim() || !body.ambulancia?.trim()) {
+      return NextResponse.json(
+        { error: "Fecha, nombre y ambulancia son obligatorios." },
+        { status: 400 }
+      );
     }
-    if (totalIntegrantes > 5) {
-      return NextResponse.json({ error: "Cada tripulación puede tener máximo 5 integrantes." }, { status: 400 });
+    if (personal.length === 0) {
+      return NextResponse.json(
+        { error: "Debes ingresar al menos un nombre de personal." },
+        { status: 400 }
+      );
+    }
+    if (personal.length > MAX_PERSONAL) {
+      return NextResponse.json(
+        { error: "Cada tripulación puede tener máximo 5 integrantes." },
+        { status: 400 }
+      );
     }
 
+    const fields = mapPersonalToFields(personal);
     const tripulacion = await prisma.tripulacionDiaria.update({
       where: { id },
       data: {
         fecha: startOfDay(body.fecha),
         nombre: body.nombre.trim(),
         ambulancia: body.ambulancia.trim(),
-        piloto: body.piloto.trim(),
-        licenciado: body.licenciado.trim(),
-        medico: body.medico?.trim() || null,
-        personalAdicional: JSON.stringify(personalAdicional),
+        ...fields,
         notas: body.notas?.trim() || null,
       },
     });
 
-    return NextResponse.json({ ...tripulacion, personalAdicional });
+    return NextResponse.json({
+      ...tripulacion,
+      personalAdicional: tripulacion.personalAdicional
+        ? JSON.parse(tripulacion.personalAdicional)
+        : [],
+    });
   } catch (error) {
     console.error("Error actualizando tripulación:", error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {

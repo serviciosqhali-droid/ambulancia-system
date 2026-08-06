@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const personal = await prisma.personalQhaliKay.create({
       data: {
         nombres: body.nombres.trim(),
+        cargo: optionalString(body.cargo),
         tipoDocumento: optionalString(body.tipoDocumento),
         documento: optionalString(body.documento),
         celular: body.celular.trim(),
