@@ -76,7 +76,7 @@ type EditForm = Record<
 };
 
 const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
-const estadosServicio = ["Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
+const estadosServicio = ["Por cotizar", "Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
 
 function parseDestinos(destinosStr: string): string[] {
   try {
@@ -125,6 +125,7 @@ function estadoBadgeClass(estado: string | null) {
   if (estado === "Confirmado") return "border-blue-200 bg-blue-50 text-blue-700";
   if (estado === "En Curso") return "border-yellow-200 bg-yellow-50 text-yellow-700";
   if (estado === "Cancelado") return "border-red-200 bg-red-50 text-red-700";
+  if (estado === "Por cotizar" || estado === "Cotización") return "border-slate-200 bg-slate-50 text-slate-700";
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
@@ -357,6 +358,7 @@ export default function ServiciosList({ initialServicios }: Props) {
           <div className="flex gap-4 self-end lg:self-center w-full lg:w-auto">
             <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} className="w-1/2 lg:w-44 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 bg-white cursor-pointer">
               <option value="Todos">Todos los Estados</option>
+              <option value="Por cotizar">Por cotizar</option>
               <option value="Cotización">Cotización</option>
               <option value="Confirmado">Confirmado</option>
               <option value="En Curso">En Curso</option>
