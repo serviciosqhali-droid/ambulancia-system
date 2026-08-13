@@ -65,7 +65,7 @@ type EditForm = Record<
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
+  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "eventoNombreEmpresa" | "eventoRuc" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
   string
 > & {
   esIdaYVuelta: boolean;
@@ -158,6 +158,8 @@ function buildEventoNotasFromForm(form: EditForm) {
     "Duración: " + (form.eventoDuracion || "0") + " " + (form.eventoUnidad || "Horas"),
     "Personal requerido: " + (personal.join(" / ") || "No especificado"),
     form.eventoDetallePersonal ? "Detalle de personal: " + form.eventoDetallePersonal : "",
+    form.eventoNombreEmpresa.trim() ? "Nombre de la empresa: " + form.eventoNombreEmpresa.trim() : "",
+    form.eventoRuc.trim() ? "RUC: " + form.eventoRuc.trim() : "",
     form.observaciones ? "Observaciones: " + form.observaciones : "",
     form.notas,
   ].filter(Boolean).join("\n");
@@ -195,6 +197,8 @@ function buildEditForm(servicio: Servicio): EditForm {
     eventoDuracion: getEventoDato(servicio.notas, "Duración").split(" ")[0] || "",
     eventoUnidad: getEventoDato(servicio.notas, "Duración").split(" ").slice(1).join(" ") || "Horas",
     eventoDetallePersonal: getEventoDato(servicio.notas, "Detalle de personal") || "",
+    eventoNombreEmpresa: getEventoDato(servicio.notas, "Nombre de la empresa") || "",
+    eventoRuc: getEventoDato(servicio.notas, "RUC") || "",
     horaSalidaBase: toDatetimeLocal(servicio.horaSalidaBase),
     horaLlegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
     horaInicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
@@ -485,6 +489,8 @@ export default function ServiciosList({ initialServicios }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <Field label="Nombre del Contacto *" value={editForm.contacto} onChange={(value) => updateForm("contacto", value)} />
                   <Field label="Teléfono *" value={editForm.telefono} onChange={(value) => updateForm("telefono", value.replace(/\D/g, "").slice(0, 9))} />
+                  <Field label="Nombre de la empresa (opcional)" value={editForm.eventoNombreEmpresa} onChange={(value) => updateForm("eventoNombreEmpresa", value)} />
+                  <Field label="RUC (opcional)" value={editForm.eventoRuc} onChange={(value) => updateForm("eventoRuc", value.replace(/\D/g, "").slice(0, 11))} />
                   <div className="md:col-span-2"><Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} /></div>
                   <SelectField label="Estado *" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
                   <SelectField label="Método de Pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Efectivo", "Yape", "Transferencia", "Tarjeta"]} />
@@ -569,6 +575,8 @@ function buildEventoWhatsapp(servicio: Servicio) {
   const duracion = getEventoDato(servicio.notas, "Duración") || "No especificado";
   const personal = getEventoDato(servicio.notas, "Personal requerido") || "No especificado";
   const detallePersonal = getEventoDato(servicio.notas, "Detalle de personal");
+  const nombreEmpresa = getEventoDato(servicio.notas, "Nombre de la empresa");
+  const ruc = getEventoDato(servicio.notas, "RUC");
 
   return [
     "📣 *ALQUILER PARA EVENTO*",
@@ -589,6 +597,8 @@ function buildEventoWhatsapp(servicio: Servicio) {
     "📞 *CONTACTO*",
     `*Nombre:* ${servicio.contacto || "No especificado"}`,
     `*Teléfono:* ${servicio.telefono || "No especificado"}`,
+    nombreEmpresa ? `*Empresa:* ${nombreEmpresa}` : "",
+    ruc ? `*RUC:* ${ruc}` : "",
     servicio.email ? `*Email:* ${servicio.email}` : "",
   ].filter(Boolean).join("\n");
 }
@@ -664,6 +674,8 @@ function DetalleEventoModal({ servicio, onClose, onEdit }: { servicio: Servicio;
               <div className="mt-4 space-y-3 text-sm">
                 <DetailItem label="Nombre" value={servicio.contacto || "No especificado"} />
                 <DetailItem label="Teléfono" value={servicio.telefono || "No especificado"} />
+                <DetailItem label="Empresa" value={getEventoDato(servicio.notas, "Nombre de la empresa") || "No especificado"} />
+                <DetailItem label="RUC" value={getEventoDato(servicio.notas, "RUC") || "No especificado"} />
                 <DetailItem label="Email" value={servicio.email || "No especificado"} />
               </div>
             </section>

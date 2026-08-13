@@ -55,6 +55,8 @@ export default function NuevoServicioPage() {
   const [requiereParamedico, setRequiereParamedico] = useState(false);
   const [requierePiloto, setRequierePiloto] = useState(false);
   const [detallePersonal, setDetallePersonal] = useState("");
+  const [nombreEmpresa, setNombreEmpresa] = useState("");
+  const [rucEmpresa, setRucEmpresa] = useState("");
 
   const esEvento = tipoServicio === "Evento";
 
@@ -139,6 +141,8 @@ export default function NuevoServicioPage() {
       `Duración: ${eventoDuracion} ${eventoUnidad}`,
       `Personal requerido: ${personal.join(" / ") || "No especificado"}`,
       detallePersonal ? `Detalle de personal: ${detallePersonal}` : "",
+      nombreEmpresa.trim() ? `Nombre de la empresa: ${nombreEmpresa.trim()}` : "",
+      rucEmpresa.trim() ? `RUC: ${rucEmpresa.trim()}` : "",
       observaciones ? `Observaciones: ${observaciones}` : "",
       notas,
     ].filter(Boolean).join("\n");
@@ -324,6 +328,10 @@ export default function NuevoServicioPage() {
           setTelefono={(value) => setTelefonos([value.replace(/\D/g, "").slice(0, 9)])}
           email={email}
           setEmail={setEmail}
+          nombreEmpresa={nombreEmpresa}
+          setNombreEmpresa={setNombreEmpresa}
+          rucEmpresa={rucEmpresa}
+          setRucEmpresa={setRucEmpresa}
           estadoServicio={estadoServicio}
           setEstadoServicio={setEstadoServicio}
           observaciones={observaciones}
@@ -523,13 +531,17 @@ function PersonalOption({ checked, setChecked, title, description }: { checked: 
   );
 }
 
-function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, email, setEmail, estadoServicio, setEstadoServicio, observaciones, setObservaciones, anteriorPaso, guardarServicio }: {
+function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, email, setEmail, nombreEmpresa, setNombreEmpresa, rucEmpresa, setRucEmpresa, estadoServicio, setEstadoServicio, observaciones, setObservaciones, anteriorPaso, guardarServicio }: {
   contacto: string;
   setContacto: (value: string) => void;
   telefono: string;
   setTelefono: (value: string) => void;
   email: string;
   setEmail: (value: string) => void;
+  nombreEmpresa: string;
+  setNombreEmpresa: (value: string) => void;
+  rucEmpresa: string;
+  setRucEmpresa: (value: string) => void;
   estadoServicio: string;
   setEstadoServicio: (value: string) => void;
   observaciones: string;
@@ -545,6 +557,8 @@ function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, emai
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Nombre del Contacto *</span><input value={contacto} onChange={(e) => setContacto(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Teléfono *</span><input value={telefono} maxLength={9} onChange={(e) => setTelefono(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
+        <label className="block"><span className="block mb-2 font-semibold text-gray-700">Nombre de la empresa (opcional)</span><input value={nombreEmpresa} onChange={(e) => setNombreEmpresa(e.target.value)} placeholder="Ej: Empresa SAC" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
+        <label className="block"><span className="block mb-2 font-semibold text-gray-700">RUC (opcional)</span><input value={rucEmpresa} maxLength={11} onChange={(e) => setRucEmpresa(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11 dígitos" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Email para Cotización (opcional)</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /><span className="text-xs text-gray-400 mt-1 block">La cotización se enviará a este email o por WhatsApp</span></label>
       </div>
       <div className="mt-6"><p className="font-semibold text-gray-700 mb-3">Estado del Servicio</p><div className="flex flex-wrap gap-2">{estados.map((estado) => <button key={estado} type="button" onClick={() => setEstadoServicio(estado)} className={`px-4 py-2 rounded-full border text-sm font-semibold ${estadoServicio === estado ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50 text-gray-500"}`}>{estado}</button>)}</div></div>
