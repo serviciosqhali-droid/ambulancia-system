@@ -51,9 +51,9 @@ export default function NuevoServicioPage() {
   const [eventoDireccion, setEventoDireccion] = useState("");
   const [eventoDuracion, setEventoDuracion] = useState("");
   const [eventoUnidad, setEventoUnidad] = useState("Horas");
-  const [requiereMedico, setRequiereMedico] = useState(true);
-  const [requiereParamedico, setRequiereParamedico] = useState(true);
-  const [requierePiloto, setRequierePiloto] = useState(true);
+  const [requiereMedico, setRequiereMedico] = useState(false);
+  const [requiereParamedico, setRequiereParamedico] = useState(false);
+  const [requierePiloto, setRequierePiloto] = useState(false);
   const [detallePersonal, setDetallePersonal] = useState("");
 
   const esEvento = tipoServicio === "Evento";
@@ -76,8 +76,8 @@ export default function NuevoServicioPage() {
         return;
       }
 
-      if (pasoActual === 4 && !requiereMedico && !requiereParamedico && !requierePiloto) {
-        alert("Seleccione al menos un tipo de personal requerido.");
+      if (pasoActual === 4 && (!requiereMedico || !requiereParamedico || !requierePiloto)) {
+        alert("Debe seleccionar Médico, Paramédico y Conductor para continuar.");
         return;
       }
 
@@ -502,10 +502,11 @@ function PasoEventoPersonal({ requiereMedico, setRequiereMedico, requiereParamed
   return (
     <EventCard>
       <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Users className="text-red-600" size={22} /> Personal Requerido</h2>
+      <p className="text-sm text-gray-500 mb-4">Debe seleccionar Médico, Paramédico y Conductor para continuar.</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <PersonalOption checked={requiereMedico} setChecked={setRequiereMedico} title="Médico" description="Atención médica especializada" />
-        <PersonalOption checked={requiereParamedico} setChecked={setRequiereParamedico} title="Paramédico" description="Soporte de emergencia" />
-        <PersonalOption checked={requierePiloto} setChecked={setRequierePiloto} title="Piloto / Conductor" description="Conducción de la unidad" />
+        <PersonalOption checked={requiereMedico} setChecked={setRequiereMedico} title="Médico *" description="Atención médica especializada" />
+        <PersonalOption checked={requiereParamedico} setChecked={setRequiereParamedico} title="Paramédico *" description="Soporte de emergencia" />
+        <PersonalOption checked={requierePiloto} setChecked={setRequierePiloto} title="Piloto / Conductor *" description="Conducción de la unidad" />
       </div>
       <label className="block mt-6"><span className="block mb-2 font-semibold text-gray-700">Detalle de Cantidad de Personal</span><input value={detallePersonal} onChange={(e) => setDetallePersonal(e.target.value)} placeholder="Ej: 1 piloto, 2 paramédicos y 1 médico" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
       <p className="text-sm text-gray-400 mt-2">Especifique cuántas personas de cada tipo necesita.</p>
