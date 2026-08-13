@@ -174,6 +174,52 @@ function formatEspera(minutos: number) {
   return `${horas} h ${mins} min`;
 }
 
+function calcularEsperaMinutos(traslados: TrasladoHorario[]) {
+  return traslados.reduce(
+    (total, traslado) => total + minutesBetween(traslado.llegadaDestino, traslado.termino),
+    0
+  );
+}
+
+function costoEsperaFromMinutos(minutos: number) {
+  return minutos > 0 ? Math.ceil(minutos / 30) * 50 : 0;
+}
+
+function calcularTotalesServicio(servicio: Servicio) {
+  const destinos = parseDestinos(servicio.destinos).filter((destino) => destino.trim());
+  const traslados = buildTrasladosFromServicio(servicio);
+  const minutosDesdeHorarios = calcularEsperaMinutos(traslados);
+  const minutosEspera =
+    minutosDesdeHorarios > 0 ? minutosDesdeHorarios : servicio.minutosEspera || 0;
+  const costoEspera =
+    minutosDesdeHorarios > 0
+      ? costoEsperaFromMinutos(minutosDesdeHorarios)
+      : servicio.costoEspera || 0;
+  const destinosExtraCount = Math.max(destinos.length - 1, 0);
+  const costoDestinosExtra = destinosExtraCount * (servicio.costoDestinoAdicional || 0);
+  const costoBase = servicio.costo || 0;
+  const costoCamilla = servicio.costoCamilla || 0;
+  const costoOxigeno = servicio.costoOxigeno || 0;
+  const descuento = servicio.descuento || 0;
+  const total = Math.max(
+    costoBase + costoEspera + costoCamilla + costoOxigeno + costoDestinosExtra - descuento,
+    0
+  );
+
+  return {
+    costoBase,
+    minutosEspera,
+    costoEspera,
+    costoCamilla,
+    costoOxigeno,
+    destinosExtraCount,
+    costoDestinoUnitario: servicio.costoDestinoAdicional || 0,
+    costoDestinosExtra,
+    descuento,
+    total,
+  };
+}
+
 function parseDestinos(destinosStr: string): string[] {
   try {
     const parsed = JSON.parse(destinosStr);
@@ -347,17 +393,37 @@ export default function ServiciosList({ initialServicios }: Props) {
   });
 
   const costosEdicion = useMemo(() => {
-    if (!editForm) return { espera: 0, camilla: 0, total: 0, minutosEspera: 0, esperasPorTraslado: [] as number[] };
+    if (!editForm) {
+      return {
+        espera: 0,
+        camilla: 0,
+        total: 0,
+        minutosEspera: 0,
+        esperasPorTraslado: [] as number[],
+        descuento: 0,
+        oxigeno: 0,
+        destinosExtra: 0,
+        destinos: 0,
+      };
+    }
     const base = Number(editForm.costo) || 0;
     const esperasPorTraslado = (editForm.traslados || []).map((traslado) =>
       minutesBetween(traslado.llegadaDestino, traslado.termino)
     );
     const minutosEspera = esperasPorTraslado.reduce((total, minutos) => total + minutos, 0);
-    const espera = minutosEspera > 0 ? Math.ceil(minutosEspera / 30) * 50 : 0;
+    const espera = costoEsperaFromMinutos(minutosEspera);
     const camilla = editForm.alquilerCamilla ? camillaCostos[editForm.camillaHoras] || 0 : 0;
     const descuento = Number(editForm.descuento) || 0;
     const oxigeno = editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0;
-    const destinos = Math.max(editForm.destinos.split("\n").filter((destino) => destino.trim()).length - 1, 0);
+    const destinosLista = [
+      ...editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean),
+      ...(editForm.traslados || [])
+        .slice(1)
+        .map((traslado) => traslado.destino.trim())
+        .filter(Boolean),
+    ];
+    const destinosUnicos = Array.from(new Set(destinosLista));
+    const destinos = Math.max(destinosUnicos.length - 1, 0);
     const destinosExtra = destinos * (Number(editForm.costoDestinoAdicional) || 0);
     return {
       espera,
@@ -458,7 +524,12 @@ export default function ServiciosList({ initialServicios }: Props) {
         }
       }
 
-      const destinos = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
+      const destinosBase = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
+      const destinosTraslados = editForm.traslados
+        .slice(1)
+        .map((traslado) => traslado.destino.trim())
+        .filter(Boolean);
+      const destinos = Array.from(new Set([...destinosBase, ...destinosTraslados]));
       const horarios = flattenTraslados(editForm.traslados);
       const response = await fetch("/api/servicios/" + editingServicio.id, {
         method: "PUT",
@@ -536,7 +607,7 @@ export default function ServiciosList({ initialServicios }: Props) {
             </div>
           ) : sortedServicios.map((servicio) => {
             const destinos = parseDestinos(servicio.destinos);
-            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+            const totales = calcularTotalesServicio(servicio);
             return (
               <div key={servicio.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl px-5 py-4 transition-all hover:shadow-sm">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -558,7 +629,7 @@ export default function ServiciosList({ initialServicios }: Props) {
                         {servicio.contacto && <span className="flex items-center gap-1"><User size={12} /> {servicio.contacto}</span>}
                         {servicio.telefono && <span className="flex items-center gap-1"><Phone size={12} /> {servicio.telefono}</span>}
                         <span className="flex items-center gap-1">{servicio.tipoServicio === "Evento" ? <Calendar size={12} /> : <span>⌖</span>} {servicio.tipoServicio === "Evento" ? servicio.origen : destinos[0] || "Sin destino"}</span>
-                        <span className="font-black text-green-600">{money(totalServicio)}</span>
+                        <span className="font-black text-green-600">{money(totales.total)}</span>
                         <span>{shortDate(servicio.fechaHora || servicio.createdAt)}</span>
                       </div>
                     </div>
@@ -740,7 +811,8 @@ export default function ServiciosList({ initialServicios }: Props) {
                   <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
                   <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
                     <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
-                    <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
+                    <p className="text-xs text-green-700 mt-2">Costo base: {money(Number(editForm.costo) || 0)}</p>
+                    <p className="text-xs text-green-700">Espera ({formatEspera(costosEdicion.minutosEspera || 0)}): {money(costosEdicion.espera)}</p>
                     <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
                     <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
                     <p className="text-xs text-green-700">Destinos extra ({costosEdicion.destinos}): {money(costosEdicion.destinosExtra)}</p>
@@ -917,7 +989,7 @@ function buildTrasladoWhatsapp(servicio: Servicio) {
     `*Nombre:* ${servicio.contacto || "No especificado"}`,
     `*Teléfono:* ${servicio.telefono || "No especificado"}`,
     "",
-    `💰 *Costo:* ${money((servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0))}`,
+    `💰 *Costo:* ${money(calcularTotalesServicio(servicio).total)}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -927,7 +999,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
   }
 
   const destinos = parseDestinos(servicio.destinos);
-  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+  const totales = calcularTotalesServicio(servicio);
   const mensaje = buildTrasladoWhatsapp(servicio);
 
   async function copiarWhatsapp() {
@@ -1024,7 +1096,15 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
 
             <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
               <h4 className="font-black text-gray-900">Costo del Servicio</h4>
-              <p className="mt-5 text-4xl font-black text-green-700">{money(total)}</p>
+              <div className="mt-4 space-y-1 text-sm text-green-800">
+                <p>Costo base: {money(totales.costoBase)}</p>
+                <p>Espera ({formatEspera(totales.minutosEspera)}): {money(totales.costoEspera)}</p>
+                <p>Camilla: {money(totales.costoCamilla)}</p>
+                <p>Oxígeno: {money(totales.costoOxigeno)}</p>
+                <p>Destinos adicionales ({totales.destinosExtraCount}): {money(totales.costoDestinosExtra)}</p>
+                <p>Descuento: -{money(totales.descuento)}</p>
+              </div>
+              <p className="mt-4 text-4xl font-black text-green-700">{money(totales.total)}</p>
             </section>
 
             <section className="rounded-2xl bg-white border border-gray-200 p-5">

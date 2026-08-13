@@ -27,9 +27,29 @@ function totalServicio(servicio: {
   costo: number | null;
   costoEspera: number | null;
   costoCamilla: number | null;
+  costoOxigeno?: number | null;
+  costoDestinoAdicional?: number | null;
   descuento: number | null;
+  destinos?: string;
 }) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
+  let destinosExtra = 0;
+  if (servicio.destinos) {
+    try {
+      const parsed = JSON.parse(servicio.destinos);
+      const list = Array.isArray(parsed) ? parsed : [servicio.destinos];
+      destinosExtra = Math.max(list.filter(Boolean).length - 1, 0) * (servicio.costoDestinoAdicional || 0);
+    } catch {
+      destinosExtra = 0;
+    }
+  }
+  return (
+    (servicio.costo || 0) +
+    (servicio.costoEspera || 0) +
+    (servicio.costoCamilla || 0) +
+    (servicio.costoOxigeno || 0) +
+    destinosExtra -
+    (servicio.descuento || 0)
+  );
 }
 
 export default async function ServiciosPage() {
