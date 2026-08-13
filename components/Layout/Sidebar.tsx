@@ -51,11 +51,12 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              prefetch
               aria-current={active ? "page" : undefined}
               className={`w-full flex items-center gap-3 p-3 rounded-xl transition outline-none ${
                 active
                   ? "bg-red-500 font-semibold shadow-sm"
-                  : "[@media(hover:hover)]:hover:bg-red-600/70 focus-visible:ring-2 focus-visible:ring-white/70"
+                  : "hover:bg-red-600/70 focus-visible:ring-2 focus-visible:ring-white/70"
               }`}
             >
               <Icon size={20} />

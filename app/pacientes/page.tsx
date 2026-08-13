@@ -1,40 +1,10 @@
-"use client";
-
-import { useState } from "react";
-
 import DashboardLayout from "@/components/Layout/DashboardLayout";
-import PatientTable from "@/components/PatientTable";
-import PatientForm from "@/components/PatientForm";
+import PacientesClient from "@/components/PacientesClient";
 
-export default function ClientesPage() {
-
-  const [refresh, setRefresh] = useState(false);
-
-  function actualizarTabla() {
-    setRefresh(!refresh);
-  }
-
+export default function PacientesPage() {
   return (
     <DashboardLayout>
-
-      <div className="flex justify-between items-center">
-
-        <div>
-          <h1 className="text-4xl font-bold text-gray-800">
-            Pacientes
-          </h1>
-
-          <p className="text-gray-500 mt-2">
-            Gestión de clientes del sistema
-          </p>
-        </div>
-
-      </div>
-
-      <PatientForm onSaved={actualizarTabla} />
-
-      <PatientTable refresh={refresh} />
-
+      <PacientesClient />
     </DashboardLayout>
   );
 }
