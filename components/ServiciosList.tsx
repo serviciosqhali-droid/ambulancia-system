@@ -829,7 +829,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
 
             <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
               <h4 className="font-black text-gray-900">Costo del Servicio</h4>
-              <p className="mt-5 text-4xl font-black text-green-700">$ {money(total).replace("S/. ", "S/. ")}</p>
+              <p className="mt-5 text-4xl font-black text-green-700">{money(total)}</p>
             </section>
 
             <section className="rounded-2xl bg-white border border-gray-200 p-5">
