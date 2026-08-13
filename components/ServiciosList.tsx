@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Search, User } from "lucide-react";
+import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Plus, Search, Trash2, User } from "lucide-react";
 
 interface Servicio {
   id: number;
@@ -50,6 +50,7 @@ interface Servicio {
   horaInicioTraslado2: string | null;
   horaLlegadaDestino2: string | null;
   horaTermino2: string | null;
+  trasladosExtra: string | null;
   notas: string | null;
   createdAt: string;
   updatedAt: string | null;
@@ -59,13 +60,21 @@ interface Props {
   initialServicios: Servicio[];
 }
 
+type TrasladoHorario = {
+  salidaBase: string;
+  llegadaRecojo: string;
+  inicioTraslado: string;
+  llegadaDestino: string;
+  termino: string;
+};
+
 type EditForm = Record<
   | "paciente" | "edad" | "peso" | "tipoServicio" | "origen" | "referencia" | "destinos"
   | "diagnostico" | "enfermedadFondo" | "sintomas" | "tratamientoActual" | "requiereOxigeno"
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "eventoNombreEmpresa" | "eventoRuc" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
+  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "eventoNombreEmpresa" | "eventoRuc" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas" | "trasladosExtra",
   string
 > & {
   esIdaYVuelta: boolean;
@@ -73,10 +82,81 @@ type EditForm = Record<
   eventoRequiereMedico: boolean;
   eventoRequiereParamedico: boolean;
   eventoRequierePiloto: boolean;
+  traslados: TrasladoHorario[];
 };
 
 const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
 const estadosServicio = ["Por cotizar", "Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
+
+function emptyTraslado(): TrasladoHorario {
+  return { salidaBase: "", llegadaRecojo: "", inicioTraslado: "", llegadaDestino: "", termino: "" };
+}
+
+function parseTrasladosExtra(value: string | null | undefined): TrasladoHorario[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => ({
+      salidaBase: typeof item?.salidaBase === "string" ? item.salidaBase : "",
+      llegadaRecojo: typeof item?.llegadaRecojo === "string" ? item.llegadaRecojo : "",
+      inicioTraslado: typeof item?.inicioTraslado === "string" ? item.inicioTraslado : "",
+      llegadaDestino: typeof item?.llegadaDestino === "string" ? item.llegadaDestino : "",
+      termino: typeof item?.termino === "string" ? item.termino : "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function buildTrasladosFromServicio(servicio: Servicio): TrasladoHorario[] {
+  const first: TrasladoHorario = {
+    salidaBase: toDatetimeLocal(servicio.horaSalidaBase),
+    llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
+    inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
+    llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino),
+    termino: toDatetimeLocal(servicio.horaTermino),
+  };
+  const second: TrasladoHorario = {
+    salidaBase: toDatetimeLocal(servicio.horaSalidaBase2),
+    llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo2),
+    inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado2),
+    llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino2),
+    termino: toDatetimeLocal(servicio.horaTermino2),
+  };
+  const extras = parseTrasladosExtra(servicio.trasladosExtra);
+  const hasSecond = Object.values(second).some(Boolean);
+  return [first, ...(hasSecond ? [second] : []), ...extras];
+}
+
+function flattenTraslados(traslados: TrasladoHorario[]) {
+  const list = traslados.length > 0 ? traslados : [emptyTraslado()];
+  const first = list[0] || emptyTraslado();
+  const second = list[1] || emptyTraslado();
+  const extras = list.slice(2);
+  return {
+    horaSalidaBase: first.salidaBase || null,
+    horaLlegadaRecojo: first.llegadaRecojo || null,
+    horaInicioTraslado: first.inicioTraslado || null,
+    horaLlegadaDestino: first.llegadaDestino || null,
+    horaTermino: first.termino || null,
+    horaSalidaBase2: second.salidaBase || null,
+    horaLlegadaRecojo2: second.llegadaRecojo || null,
+    horaInicioTraslado2: second.inicioTraslado || null,
+    horaLlegadaDestino2: second.llegadaDestino || null,
+    horaTermino2: second.termino || null,
+    trasladosExtra: extras.length > 0 ? JSON.stringify(extras) : null,
+  };
+}
+
+function formatEspera(minutos: number) {
+  if (minutos <= 0) return "0 min";
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas <= 0) return `${mins} min`;
+  if (mins <= 0) return `${horas} h`;
+  return `${horas} h ${mins} min`;
+}
 
 function parseDestinos(destinosStr: string): string[] {
   try {
@@ -210,6 +290,8 @@ function buildEditForm(servicio: Servicio): EditForm {
     horaInicioTraslado2: toDatetimeLocal(servicio.horaInicioTraslado2),
     horaLlegadaDestino2: toDatetimeLocal(servicio.horaLlegadaDestino2),
     horaTermino2: toDatetimeLocal(servicio.horaTermino2),
+    trasladosExtra: servicio.trasladosExtra || "",
+    traslados: buildTrasladosFromServicio(servicio),
     minutosEspera: servicio.minutosEspera?.toString() || "0",
     alquilerCamilla: servicio.alquilerCamilla,
     eventoRequiereMedico: parseEventoPersonal(servicio.notas).medico,
@@ -249,16 +331,29 @@ export default function ServiciosList({ initialServicios }: Props) {
   });
 
   const costosEdicion = useMemo(() => {
-    if (!editForm) return { espera: 0, camilla: 0, total: 0 };
+    if (!editForm) return { espera: 0, camilla: 0, total: 0, minutosEspera: 0, esperasPorTraslado: [] as number[] };
     const base = Number(editForm.costo) || 0;
-    const minutosEspera = minutesBetween(editForm.horaLlegadaDestino, editForm.horaTermino);
+    const esperasPorTraslado = (editForm.traslados || []).map((traslado) =>
+      minutesBetween(traslado.llegadaDestino, traslado.termino)
+    );
+    const minutosEspera = esperasPorTraslado.reduce((total, minutos) => total + minutos, 0);
     const espera = minutosEspera > 0 ? Math.ceil(minutosEspera / 30) * 50 : 0;
     const camilla = editForm.alquilerCamilla ? camillaCostos[editForm.camillaHoras] || 0 : 0;
     const descuento = Number(editForm.descuento) || 0;
     const oxigeno = editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0;
     const destinos = Math.max(editForm.destinos.split("\n").filter((destino) => destino.trim()).length - 1, 0);
     const destinosExtra = destinos * (Number(editForm.costoDestinoAdicional) || 0);
-    return { espera, camilla, descuento, oxigeno, destinosExtra, destinos, minutosEspera, total: Math.max(base + espera + camilla + oxigeno + destinosExtra - descuento, 0) };
+    return {
+      espera,
+      camilla,
+      descuento,
+      oxigeno,
+      destinosExtra,
+      destinos,
+      minutosEspera,
+      esperasPorTraslado,
+      total: Math.max(base + espera + camilla + oxigeno + destinosExtra - descuento, 0),
+    };
   }, [editForm]);
 
   function openEdit(servicio: Servicio) {
@@ -269,7 +364,36 @@ export default function ServiciosList({ initialServicios }: Props) {
   }
 
   function updateForm<K extends keyof EditForm>(key: K, value: EditForm[K]) {
-    setEditForm((current) => current ? { ...current, [key]: value } : current);
+    setEditForm((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  function updateTraslado(index: number, field: keyof TrasladoHorario, value: string) {
+    setEditForm((current) => {
+      if (!current) return current;
+      const traslados = current.traslados.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      );
+      return { ...current, traslados };
+    });
+  }
+
+  function agregarTraslado() {
+    setEditForm((current) =>
+      current ? { ...current, traslados: [...current.traslados, emptyTraslado()] } : current
+    );
+  }
+
+  function eliminarTraslado(index: number) {
+    setEditForm((current) => {
+      if (!current) return current;
+      if (current.traslados.length <= 1) {
+        return { ...current, traslados: [emptyTraslado()] };
+      }
+      return {
+        ...current,
+        traslados: current.traslados.filter((_, itemIndex) => itemIndex !== index),
+      };
+    });
   }
 
   async function cambiarEstadoRapido(servicio: Servicio, nuevoEstado: string) {
@@ -308,11 +432,13 @@ export default function ServiciosList({ initialServicios }: Props) {
 
     try {
       const destinos = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
+      const horarios = flattenTraslados(editForm.traslados);
       const response = await fetch("/api/servicios/" + editingServicio.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editForm,
+          ...horarios,
           destinos,
           edad: editForm.edad ? Number(editForm.edad) : null,
           peso: editForm.peso ? Number(editForm.peso) : null,
@@ -510,27 +636,54 @@ export default function ServiciosList({ initialServicios }: Props) {
                   <Field label="Litros de oxígeno" type="number" value={editForm.litrosOxigeno} onChange={(value) => updateForm("litrosOxigeno", value)} />
                 </div>
 
-                <SectionTitle title="Tiempos del servicio" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Salida de ambulancia a recojo" type="datetime-local" value={editForm.horaSalidaBase} onChange={(value) => updateForm("horaSalidaBase", value)} />
-                  <Field label="Llegada al punto de recojo" type="datetime-local" value={editForm.horaLlegadaRecojo} onChange={(value) => updateForm("horaLlegadaRecojo", value)} />
-                  <Field label="Inicio del traslado" type="datetime-local" value={editForm.horaInicioTraslado} onChange={(value) => updateForm("horaInicioTraslado", value)} />
-                  <Field label="Llegada al destino" type="datetime-local" value={editForm.horaLlegadaDestino} onChange={(value) => updateForm("horaLlegadaDestino", value)} />
-                  <Field label="Término del servicio" type="datetime-local" value={editForm.horaTermino} onChange={(value) => updateForm("horaTermino", value)} />
-                  <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
-                    <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
-                    <p className="text-2xl font-black text-yellow-700 mt-2">{costosEdicion.minutosEspera} min</p>
-                    <p className="text-xs text-yellow-700 mt-1">Desde llegada al destino hasta término del servicio.</p>
+                <SectionTitle title="Tiempos de traslados" />
+                <div className="space-y-5">
+                  {editForm.traslados.map((traslado, index) => {
+                    const minutosTraslado = costosEdicion.esperasPorTraslado?.[index] || 0;
+                    return (
+                      <div key={index} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <h4 className="text-sm font-black text-gray-800">Traslado {index + 1}</h4>
+                          {editForm.traslados.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => eliminarTraslado(index)}
+                              className="inline-flex items-center gap-1 rounded-xl border border-red-100 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 size={14} /> Quitar
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                          <Field label="Salida de ambulancia a recojo" type="datetime-local" value={traslado.salidaBase} onChange={(value) => updateTraslado(index, "salidaBase", value)} />
+                          <Field label="Llegada al punto de recojo" type="datetime-local" value={traslado.llegadaRecojo} onChange={(value) => updateTraslado(index, "llegadaRecojo", value)} />
+                          <Field label="Inicio del traslado" type="datetime-local" value={traslado.inicioTraslado} onChange={(value) => updateTraslado(index, "inicioTraslado", value)} />
+                          <Field label="Llegada al destino" type="datetime-local" value={traslado.llegadaDestino} onChange={(value) => updateTraslado(index, "llegadaDestino", value)} />
+                          <Field label="Término del servicio" type="datetime-local" value={traslado.termino} onChange={(value) => updateTraslado(index, "termino", value)} />
+                          <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
+                            <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
+                            <p className="text-2xl font-black text-yellow-700 mt-2">{formatEspera(minutosTraslado)}</p>
+                            <p className="text-xs text-yellow-700 mt-1">Entre llegada al destino y término del servicio.</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-dashed border-gray-200 bg-white p-4">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">Espera total de todos los traslados</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatEspera(costosEdicion.minutosEspera || 0)} · cobro estimado {money(costosEdicion.espera)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={agregarTraslado}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                    >
+                      <Plus size={16} /> Agregar traslado
+                    </button>
                   </div>
-                </div>
-
-                <SectionTitle title="Segundo traslado (opcional)" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Salida de ambulancia a segundo recojo" type="datetime-local" value={editForm.horaSalidaBase2} onChange={(value) => updateForm("horaSalidaBase2", value)} />
-                  <Field label="Llegada al segundo recojo" type="datetime-local" value={editForm.horaLlegadaRecojo2} onChange={(value) => updateForm("horaLlegadaRecojo2", value)} />
-                  <Field label="Inicio segundo traslado" type="datetime-local" value={editForm.horaInicioTraslado2} onChange={(value) => updateForm("horaInicioTraslado2", value)} />
-                  <Field label="Llegada segundo destino" type="datetime-local" value={editForm.horaLlegadaDestino2} onChange={(value) => updateForm("horaLlegadaDestino2", value)} />
-                  <Field label="Término segundo servicio" type="datetime-local" value={editForm.horaTermino2} onChange={(value) => updateForm("horaTermino2", value)} />
                 </div>
 
                 <SectionTitle title="Costos adicionales y comprobante" />
