@@ -112,6 +112,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       horaInicioTraslado2: optionalDate(body.horaInicioTraslado2),
       horaLlegadaDestino2: optionalDate(body.horaLlegadaDestino2),
       horaTermino2: optionalDate(body.horaTermino2),
+      trasladosExtra: optionalString(body.trasladosExtra),
       minutosEspera: optionalNumber(body.minutosEspera) ?? 0,
       costoEspera: optionalNumber(body.costoEspera) ?? 0,
       descuento: optionalNumber(body.descuento) ?? 0,

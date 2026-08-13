@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Ambulance, CalendarDays, Clock, Phone, Users } from "lucide-react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import NuevoServicioStepper from "@/components/NuevoServicioStepper";
 import PasoPaciente from "@/components/PasoPaciente";
 import PasoDirecciones from "@/components/PasoDirecciones";
@@ -51,16 +50,19 @@ export default function NuevoServicioPage() {
   const [eventoDireccion, setEventoDireccion] = useState("");
   const [eventoDuracion, setEventoDuracion] = useState("");
   const [eventoUnidad, setEventoUnidad] = useState("Horas");
-  const [requiereMedico, setRequiereMedico] = useState(true);
-  const [requiereParamedico, setRequiereParamedico] = useState(true);
-  const [requierePiloto, setRequierePiloto] = useState(true);
+  const [requiereMedico, setRequiereMedico] = useState(false);
+  const [requiereParamedico, setRequiereParamedico] = useState(false);
+  const [requierePiloto, setRequierePiloto] = useState(false);
   const [detallePersonal, setDetallePersonal] = useState("");
+  const [nombreEmpresa, setNombreEmpresa] = useState("");
+  const [rucEmpresa, setRucEmpresa] = useState("");
 
   const esEvento = tipoServicio === "Evento";
 
   function seleccionarServicio(tipo: "Traslado" | "Evento") {
     setServicioSeleccionado(tipo);
     setTipoServicio(tipo);
+    setEstadoServicio(tipo === "Evento" ? "Por cotizar" : "Cotización");
     setPasoActual(2);
   }
 
@@ -76,8 +78,8 @@ export default function NuevoServicioPage() {
         return;
       }
 
-      if (pasoActual === 4 && !requiereMedico && !requiereParamedico && !requierePiloto) {
-        alert("Seleccione al menos un tipo de personal requerido.");
+      if (pasoActual === 4 && (!requiereMedico || !requiereParamedico || !requierePiloto)) {
+        alert("Debe seleccionar Médico, Paramédico y Conductor para continuar.");
         return;
       }
 
@@ -139,6 +141,8 @@ export default function NuevoServicioPage() {
       `Duración: ${eventoDuracion} ${eventoUnidad}`,
       `Personal requerido: ${personal.join(" / ") || "No especificado"}`,
       detallePersonal ? `Detalle de personal: ${detallePersonal}` : "",
+      nombreEmpresa.trim() ? `Nombre de la empresa: ${nombreEmpresa.trim()}` : "",
+      rucEmpresa.trim() ? `RUC: ${rucEmpresa.trim()}` : "",
       observaciones ? `Observaciones: ${observaciones}` : "",
       notas,
     ].filter(Boolean).join("\n");
@@ -191,7 +195,7 @@ export default function NuevoServicioPage() {
           email,
           costo: Number(costo || 0),
           metodoPago: metodoPago || "Transferencia",
-          estado: estadoServicio,
+          estado: "Por cotizar",
           fechaHora,
           notas: buildEventoNotas(),
         }
@@ -244,8 +248,8 @@ export default function NuevoServicioPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div>
+    <>
+    <div>
         <h1 className="text-4xl font-bold text-gray-800">Nuevo Servicio</h1>
         <p className="text-gray-500 mt-2">
           {esEvento ? "Alquiler para evento — registre los detalles" : "Despacho y cotización de traslados médicos."}
@@ -324,6 +328,10 @@ export default function NuevoServicioPage() {
           setTelefono={(value) => setTelefonos([value.replace(/\D/g, "").slice(0, 9)])}
           email={email}
           setEmail={setEmail}
+          nombreEmpresa={nombreEmpresa}
+          setNombreEmpresa={setNombreEmpresa}
+          rucEmpresa={rucEmpresa}
+          setRucEmpresa={setRucEmpresa}
           estadoServicio={estadoServicio}
           setEstadoServicio={setEstadoServicio}
           observaciones={observaciones}
@@ -421,7 +429,7 @@ export default function NuevoServicioPage() {
           setObservaciones={setObservaciones}
         />
       )}
-    </DashboardLayout>
+    </>
   );
 }
 
@@ -502,10 +510,11 @@ function PasoEventoPersonal({ requiereMedico, setRequiereMedico, requiereParamed
   return (
     <EventCard>
       <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Users className="text-red-600" size={22} /> Personal Requerido</h2>
+      <p className="text-sm text-gray-500 mb-4">Debe seleccionar Médico, Paramédico y Conductor para continuar.</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <PersonalOption checked={requiereMedico} setChecked={setRequiereMedico} title="Médico" description="Atención médica especializada" />
-        <PersonalOption checked={requiereParamedico} setChecked={setRequiereParamedico} title="Paramédico" description="Soporte de emergencia" />
-        <PersonalOption checked={requierePiloto} setChecked={setRequierePiloto} title="Piloto / Conductor" description="Conducción de la unidad" />
+        <PersonalOption checked={requiereMedico} setChecked={setRequiereMedico} title="Médico *" description="Atención médica especializada" />
+        <PersonalOption checked={requiereParamedico} setChecked={setRequiereParamedico} title="Paramédico *" description="Soporte de emergencia" />
+        <PersonalOption checked={requierePiloto} setChecked={setRequierePiloto} title="Piloto / Conductor *" description="Conducción de la unidad" />
       </div>
       <label className="block mt-6"><span className="block mb-2 font-semibold text-gray-700">Detalle de Cantidad de Personal</span><input value={detallePersonal} onChange={(e) => setDetallePersonal(e.target.value)} placeholder="Ej: 1 piloto, 2 paramédicos y 1 médico" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
       <p className="text-sm text-gray-400 mt-2">Especifique cuántas personas de cada tipo necesita.</p>
@@ -522,13 +531,17 @@ function PersonalOption({ checked, setChecked, title, description }: { checked: 
   );
 }
 
-function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, email, setEmail, estadoServicio, setEstadoServicio, observaciones, setObservaciones, anteriorPaso, guardarServicio }: {
+function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, email, setEmail, nombreEmpresa, setNombreEmpresa, rucEmpresa, setRucEmpresa, estadoServicio, setEstadoServicio, observaciones, setObservaciones, anteriorPaso, guardarServicio }: {
   contacto: string;
   setContacto: (value: string) => void;
   telefono: string;
   setTelefono: (value: string) => void;
   email: string;
   setEmail: (value: string) => void;
+  nombreEmpresa: string;
+  setNombreEmpresa: (value: string) => void;
+  rucEmpresa: string;
+  setRucEmpresa: (value: string) => void;
   estadoServicio: string;
   setEstadoServicio: (value: string) => void;
   observaciones: string;
@@ -536,7 +549,7 @@ function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, emai
   anteriorPaso: () => void;
   guardarServicio: () => void;
 }) {
-  const estados = ["Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
+  const estados = ["Por cotizar", "Confirmado", "En Curso", "Completado", "Cancelado"];
 
   return (
     <EventCard>
@@ -544,9 +557,31 @@ function PasoEventoContacto({ contacto, setContacto, telefono, setTelefono, emai
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Nombre del Contacto *</span><input value={contacto} onChange={(e) => setContacto(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="block"><span className="block mb-2 font-semibold text-gray-700">Teléfono *</span><input value={telefono} maxLength={9} onChange={(e) => setTelefono(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
+        <label className="block"><span className="block mb-2 font-semibold text-gray-700">Nombre de la empresa (opcional)</span><input value={nombreEmpresa} onChange={(e) => setNombreEmpresa(e.target.value)} placeholder="Ej: Empresa SAC" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
+        <label className="block"><span className="block mb-2 font-semibold text-gray-700">RUC (opcional)</span><input value={rucEmpresa} maxLength={11} onChange={(e) => setRucEmpresa(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="11 dígitos" className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /></label>
         <label className="md:col-span-2 block"><span className="block mb-2 font-semibold text-gray-700">Email para Cotización (opcional)</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" /><span className="text-xs text-gray-400 mt-1 block">La cotización se enviará a este email o por WhatsApp</span></label>
       </div>
-      <div className="mt-6"><p className="font-semibold text-gray-700 mb-3">Estado del Servicio</p><div className="flex flex-wrap gap-2">{estados.map((estado) => <button key={estado} type="button" onClick={() => setEstadoServicio(estado)} className={`px-4 py-2 rounded-full border text-sm font-semibold ${estadoServicio === estado ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50 text-gray-500"}`}>{estado}</button>)}</div></div>
+      <div className="mt-6">
+        <p className="font-semibold text-gray-700 mb-3">Estado del Servicio</p>
+        <p className="mb-3 text-sm text-gray-500">Al crear un evento inicia automáticamente en <span className="font-bold text-gray-700">Por cotizar</span>.</p>
+        <div className="flex flex-wrap gap-2">
+          {estados.map((estado) => (
+            <button
+              key={estado}
+              type="button"
+              disabled={estado !== "Por cotizar"}
+              onClick={() => setEstadoServicio(estado)}
+              className={`px-4 py-2 rounded-full border text-sm font-semibold ${
+                estadoServicio === estado
+                  ? "border-red-500 bg-red-50 text-red-700"
+                  : "border-gray-200 bg-gray-50 text-gray-400"
+              } ${estado !== "Por cotizar" ? "cursor-not-allowed opacity-60" : ""}`}
+            >
+              {estado}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="block mt-6"><span className="block mb-2 font-semibold text-gray-700">Observaciones Adicionales</span><textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 h-28 focus:outline-none focus:border-red-500" /></label>
       <div className="grid grid-cols-2 gap-4 mt-8 pt-6 border-t border-gray-100"><button type="button" onClick={anteriorPaso} className="border border-gray-300 px-6 py-3 rounded-xl hover:bg-gray-50 transition-colors">← Atrás</button><button type="button" onClick={guardarServicio} className="bg-red-600 hover:bg-red-500 text-white font-bold px-8 py-3 rounded-xl shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all">Registrar Solicitud</button></div>
     </EventCard>

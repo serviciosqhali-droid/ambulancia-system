@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import { Database, Download, Eye, Search } from "lucide-react";
 
 type ServicioRow = {
@@ -159,8 +158,8 @@ export default function BaseDatosPage() {
   }, [from, to]);
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-gray-800 flex items-center gap-3">
             <Database className="text-red-600" size={36} />
@@ -298,7 +297,7 @@ export default function BaseDatosPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }
 
