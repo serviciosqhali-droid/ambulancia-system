@@ -24,6 +24,11 @@ const links = [
   { href: "/personal", label: "Personal Qhali Kay", icon: UserPlus },
 ] as const;
 
+function isActivePath(pathname: string, href: string, exact?: boolean) {
+  if (exact || href === "/") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
 
@@ -41,13 +46,16 @@ export default function Sidebar() {
       <nav className="space-y-3">
         {links.map(({ href, label, icon: Icon, ...rest }) => {
           const exact = "exact" in rest && rest.exact;
-          const active = exact ? pathname === href : pathname.startsWith(href);
+          const active = isActivePath(pathname, href, exact);
           return (
             <Link
               key={href}
               href={href}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl transition ${
-                active ? "bg-red-600" : "hover:bg-red-600"
+              aria-current={active ? "page" : undefined}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl transition outline-none ${
+                active
+                  ? "bg-red-500 font-semibold shadow-sm"
+                  : "[@media(hover:hover)]:hover:bg-red-600/70 focus-visible:ring-2 focus-visible:ring-white/70"
               }`}
             >
               <Icon size={20} />
