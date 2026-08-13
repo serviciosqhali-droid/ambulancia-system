@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import ServiciosList from "@/components/ServiciosList";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -52,8 +51,8 @@ export default async function ServiciosPage() {
   }));
 
   return (
-    <DashboardLayout>
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <>
+    <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-gray-800">
             Servicios
@@ -73,6 +72,6 @@ export default async function ServiciosPage() {
       </div>
 
       <ServiciosList initialServicios={serviciosFormateados} />
-    </DashboardLayout>
+    </>
   );
 }

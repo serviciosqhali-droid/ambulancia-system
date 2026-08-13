@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import { Plus, UserPlus, X } from "lucide-react";
 
 type Personal = {
@@ -204,8 +203,8 @@ export default function PersonalPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div>
+    <>
+    <div>
         <h1 className="text-4xl font-black text-gray-800 flex items-center gap-3">
           <UserPlus className="text-red-600" />
           Personal Qhali Kay
@@ -412,7 +411,7 @@ export default function PersonalPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

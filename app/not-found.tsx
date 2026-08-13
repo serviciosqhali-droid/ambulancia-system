@@ -7,7 +7,9 @@ export default function NotFound() {
         <p className="text-sm font-semibold text-red-600">Error 404</p>
         <h1 className="mt-2 text-3xl font-black text-gray-800">Página no encontrada</h1>
         <p className="mt-3 text-sm text-gray-500">
-          La ruta no existe o el servidor local necesita reiniciarse tras actualizar el código.
+          Si esto aparece en todos los módulos, detén el servidor, ejecuta{" "}
+          <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">npm run fresh</code>{" "}
+          y vuelve a entrar.
         </p>
         <div className="mt-6 flex flex-col gap-3">
           <Link
@@ -21,6 +23,12 @@ export default function NotFound() {
             className="rounded-2xl border border-gray-200 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50"
           >
             Ir a Pacientes
+          </Link>
+          <Link
+            href="/servicios"
+            className="rounded-2xl border border-gray-200 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50"
+          >
+            Ir a Servicios
           </Link>
         </div>
       </div>

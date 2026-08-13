@@ -3,7 +3,6 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Ambulance, CalendarDays, Clock, Phone, Users } from "lucide-react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import NuevoServicioStepper from "@/components/NuevoServicioStepper";
 import PasoPaciente from "@/components/PasoPaciente";
 import PasoDirecciones from "@/components/PasoDirecciones";
@@ -249,8 +248,8 @@ export default function NuevoServicioPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div>
+    <>
+    <div>
         <h1 className="text-4xl font-bold text-gray-800">Nuevo Servicio</h1>
         <p className="text-gray-500 mt-2">
           {esEvento ? "Alquiler para evento — registre los detalles" : "Despacho y cotización de traslados médicos."}
@@ -430,7 +429,7 @@ export default function NuevoServicioPage() {
           setObservaciones={setObservaciones}
         />
       )}
-    </DashboardLayout>
+    </>
   );
 }
 
