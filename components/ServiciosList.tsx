@@ -2,6 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Plus, Search, Trash2, User } from "lucide-react";
+import {
+  type TrasladoHorario,
+  buildTrasladosFromServicio,
+  calcularTotalesServicio,
+  costoEsperaFromMinutos,
+  minutesBetween,
+  money,
+  parseDestinos,
+} from "@/lib/costos-servicio";
 
 interface Servicio {
   id: number;
@@ -60,15 +69,6 @@ interface Props {
   initialServicios: Servicio[];
 }
 
-type TrasladoHorario = {
-  destino: string;
-  salidaBase: string;
-  llegadaRecojo: string;
-  inicioTraslado: string;
-  llegadaDestino: string;
-  termino: string;
-};
-
 type EditForm = Record<
   | "paciente" | "edad" | "peso" | "tipoServicio" | "origen" | "referencia" | "destinos"
   | "diagnostico" | "enfermedadFondo" | "sintomas" | "tratamientoActual" | "requiereOxigeno"
@@ -100,51 +100,6 @@ function emptyTraslado(): TrasladoHorario {
   };
 }
 
-function parseTrasladosExtra(value: string | null | undefined): TrasladoHorario[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((item) => ({
-      destino: typeof item?.destino === "string" ? item.destino : "",
-      salidaBase: typeof item?.salidaBase === "string" ? item.salidaBase : "",
-      llegadaRecojo: typeof item?.llegadaRecojo === "string" ? item.llegadaRecojo : "",
-      inicioTraslado: typeof item?.inicioTraslado === "string" ? item.inicioTraslado : "",
-      llegadaDestino: typeof item?.llegadaDestino === "string" ? item.llegadaDestino : "",
-      termino: typeof item?.termino === "string" ? item.termino : "",
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function buildTrasladosFromServicio(servicio: Servicio): TrasladoHorario[] {
-  const first: TrasladoHorario = {
-    destino: "",
-    salidaBase: toDatetimeLocal(servicio.horaSalidaBase),
-    llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
-    inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
-    llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino),
-    termino: toDatetimeLocal(servicio.horaTermino),
-  };
-
-  const extras = parseTrasladosExtra(servicio.trasladosExtra);
-  if (extras.length > 0) {
-    return [first, ...extras];
-  }
-
-  const second: TrasladoHorario = {
-    destino: "",
-    salidaBase: toDatetimeLocal(servicio.horaSalidaBase2),
-    llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo2),
-    inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado2),
-    llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino2),
-    termino: toDatetimeLocal(servicio.horaTermino2),
-  };
-  const hasSecond = [second.salidaBase, second.llegadaRecojo, second.inicioTraslado, second.llegadaDestino, second.termino].some(Boolean);
-  return [first, ...(hasSecond ? [second] : [])];
-}
-
 function flattenTraslados(traslados: TrasladoHorario[]) {
   const list = traslados.length > 0 ? traslados : [emptyTraslado()];
   const first = list[0] || emptyTraslado();
@@ -174,61 +129,6 @@ function formatEspera(minutos: number) {
   return `${horas} h ${mins} min`;
 }
 
-function calcularEsperaMinutos(traslados: TrasladoHorario[]) {
-  return traslados.reduce(
-    (total, traslado) => total + minutesBetween(traslado.llegadaDestino, traslado.termino),
-    0
-  );
-}
-
-function costoEsperaFromMinutos(minutos: number) {
-  return minutos > 0 ? Math.ceil(minutos / 30) * 50 : 0;
-}
-
-function calcularTotalesServicio(servicio: Servicio) {
-  const destinos = parseDestinos(servicio.destinos).filter((destino) => destino.trim());
-  const traslados = buildTrasladosFromServicio(servicio);
-  const minutosDesdeHorarios = calcularEsperaMinutos(traslados);
-  const minutosEspera =
-    minutosDesdeHorarios > 0 ? minutosDesdeHorarios : servicio.minutosEspera || 0;
-  const costoEspera =
-    minutosDesdeHorarios > 0
-      ? costoEsperaFromMinutos(minutosDesdeHorarios)
-      : servicio.costoEspera || 0;
-  const destinosExtraCount = Math.max(destinos.length - 1, 0);
-  const costoDestinosExtra = destinosExtraCount * (servicio.costoDestinoAdicional || 0);
-  const costoBase = servicio.costo || 0;
-  const costoCamilla = servicio.costoCamilla || 0;
-  const costoOxigeno = servicio.costoOxigeno || 0;
-  const descuento = servicio.descuento || 0;
-  const total = Math.max(
-    costoBase + costoEspera + costoCamilla + costoOxigeno + costoDestinosExtra - descuento,
-    0
-  );
-
-  return {
-    costoBase,
-    minutosEspera,
-    costoEspera,
-    costoCamilla,
-    costoOxigeno,
-    destinosExtraCount,
-    costoDestinoUnitario: servicio.costoDestinoAdicional || 0,
-    costoDestinosExtra,
-    descuento,
-    total,
-  };
-}
-
-function parseDestinos(destinosStr: string): string[] {
-  try {
-    const parsed = JSON.parse(destinosStr);
-    return Array.isArray(parsed) ? parsed : [destinosStr];
-  } catch {
-    return [destinosStr];
-  }
-}
-
 function toDatetimeLocal(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -240,10 +140,6 @@ function toDatetimeLocal(value: string | null) {
 function formatDate(value: string | null) {
   if (!value) return "No registrado";
   return new Date(value).toLocaleString("es-PE", { dateStyle: "short", timeStyle: "short" });
-}
-
-function money(value: number | null | undefined) {
-  return "S/. " + (value || 0).toFixed(2);
 }
 
 function serviceCode(servicio: Servicio) {
@@ -269,14 +165,6 @@ function estadoBadgeClass(estado: string | null) {
   if (estado === "Cancelado") return "border-red-200 bg-red-50 text-red-700";
   if (estado === "Por cotizar" || estado === "Cotización") return "border-slate-200 bg-slate-50 text-slate-700";
   return "border-slate-200 bg-slate-50 text-slate-700";
-}
-
-function minutesBetween(start: string, end: string) {
-  if (!start || !end) return 0;
-  const startTime = new Date(start).getTime();
-  const endTime = new Date(end).getTime();
-  if (Number.isNaN(startTime) || Number.isNaN(endTime) || endTime <= startTime) return 0;
-  return Math.ceil((endTime - startTime) / 60000);
 }
 
 function parseEventoPersonal(notas: string | null) {
@@ -391,6 +279,19 @@ export default function ServiciosList({ initialServicios }: Props) {
     if (sortBy === "ID") return b.id - a.id;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  const resumenHoy = useMemo(() => {
+    const ingresos = servicios.reduce(
+      (total, servicio) => total + calcularTotalesServicio(servicio).total,
+      0
+    );
+    return {
+      totalServicios: servicios.length,
+      enCurso: servicios.filter((servicio) => servicio.estado === "En Curso").length,
+      traslados: servicios.filter((servicio) => servicio.tipoServicio === "Traslado").length,
+      ingresos,
+    };
+  }, [servicios]);
 
   const costosEdicion = useMemo(() => {
     if (!editForm) {
@@ -573,7 +474,30 @@ export default function ServiciosList({ initialServicios }: Props) {
 
   return (
     <div className="mt-10">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Servicios Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-gray-800">{resumenHoy.totalServicios}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados durante el día</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">En Curso Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-orange-500">{resumenHoy.enCurso}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Activos en este momento</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Traslados Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-blue-600">{resumenHoy.traslados}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados del día</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Ingresos Hoy</p>
+          <h2 className="text-3xl font-black mt-4 text-green-600">{money(resumenHoy.ingresos)}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslado + espera + adicionales</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-10">
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           <div className="relative w-full lg:w-[450px]">
             <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
