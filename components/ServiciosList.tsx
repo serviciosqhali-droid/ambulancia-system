@@ -683,6 +683,17 @@ export default function ServiciosList({ initialServicios }: Props) {
                 <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
                 <Field label="Fecha y hora programada" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
                 <SelectField label="Método de pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Yape", "Transferencia", "Efectivo", "Tarjeta"]} />
+                <Field
+                  label="Costo del traslado (S/.) *"
+                  type="number"
+                  value={editForm.costo}
+                  onChange={(value) => updateForm("costo", value)}
+                />
+                <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
+                  <p className="text-sm font-bold text-green-800">Total actual</p>
+                  <p className="text-xs text-green-700 mt-1">Traslado + espera + adicionales − descuento</p>
+                  <p className="text-2xl font-black text-green-700 mt-2">{money(costosEdicion.total)}</p>
+                </div>
               </div>
             )}
 
@@ -801,7 +812,9 @@ export default function ServiciosList({ initialServicios }: Props) {
 
                 <SectionTitle title="Costos adicionales y comprobante" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Costo base del servicio" type="number" value={editForm.costo} onChange={(value) => updateForm("costo", value)} />
+                  <div className="md:col-span-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    El <span className="font-bold">Costo del traslado</span> inicial aparece arriba y se suma automáticamente con espera, camilla, oxígeno y destinos adicionales.
+                  </div>
                   <SelectField label="Alquiler de camilla" value={editForm.alquilerCamilla ? editForm.camillaHoras : ""} onChange={(value) => { updateForm("alquilerCamilla", Boolean(value)); updateForm("camillaHoras", value); }} options={["", "4", "6", "12"]} optionLabels={{ "": "No alquila camilla", "4": "4 horas - S/. 350", "6": "6 horas - S/. 400", "12": "12 horas - S/. 750" }} />
                   <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
                   <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
@@ -811,7 +824,7 @@ export default function ServiciosList({ initialServicios }: Props) {
                   <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
                   <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
                     <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
-                    <p className="text-xs text-green-700 mt-2">Costo base: {money(Number(editForm.costo) || 0)}</p>
+                    <p className="text-xs text-green-700 mt-2">Costo del traslado: {money(Number(editForm.costo) || 0)}</p>
                     <p className="text-xs text-green-700">Espera ({formatEspera(costosEdicion.minutosEspera || 0)}): {money(costosEdicion.espera)}</p>
                     <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
                     <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
@@ -1097,7 +1110,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
             <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
               <h4 className="font-black text-gray-900">Costo del Servicio</h4>
               <div className="mt-4 space-y-1 text-sm text-green-800">
-                <p>Costo base: {money(totales.costoBase)}</p>
+                <p>Costo del traslado: {money(totales.costoBase)}</p>
                 <p>Espera ({formatEspera(totales.minutosEspera)}): {money(totales.costoEspera)}</p>
                 <p>Camilla: {money(totales.costoCamilla)}</p>
                 <p>Oxígeno: {money(totales.costoOxigeno)}</p>
