@@ -61,6 +61,7 @@ interface Props {
 }
 
 type TrasladoHorario = {
+  destino: string;
   salidaBase: string;
   llegadaRecojo: string;
   inicioTraslado: string;
@@ -89,7 +90,14 @@ const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
 const estadosServicio = ["Por cotizar", "Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
 
 function emptyTraslado(): TrasladoHorario {
-  return { salidaBase: "", llegadaRecojo: "", inicioTraslado: "", llegadaDestino: "", termino: "" };
+  return {
+    destino: "",
+    salidaBase: "",
+    llegadaRecojo: "",
+    inicioTraslado: "",
+    llegadaDestino: "",
+    termino: "",
+  };
 }
 
 function parseTrasladosExtra(value: string | null | undefined): TrasladoHorario[] {
@@ -98,6 +106,7 @@ function parseTrasladosExtra(value: string | null | undefined): TrasladoHorario[
     const parsed = JSON.parse(value);
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) => ({
+      destino: typeof item?.destino === "string" ? item.destino : "",
       salidaBase: typeof item?.salidaBase === "string" ? item.salidaBase : "",
       llegadaRecojo: typeof item?.llegadaRecojo === "string" ? item.llegadaRecojo : "",
       inicioTraslado: typeof item?.inicioTraslado === "string" ? item.inicioTraslado : "",
@@ -111,29 +120,36 @@ function parseTrasladosExtra(value: string | null | undefined): TrasladoHorario[
 
 function buildTrasladosFromServicio(servicio: Servicio): TrasladoHorario[] {
   const first: TrasladoHorario = {
+    destino: "",
     salidaBase: toDatetimeLocal(servicio.horaSalidaBase),
     llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
     inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
     llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino),
     termino: toDatetimeLocal(servicio.horaTermino),
   };
+
+  const extras = parseTrasladosExtra(servicio.trasladosExtra);
+  if (extras.length > 0) {
+    return [first, ...extras];
+  }
+
   const second: TrasladoHorario = {
+    destino: "",
     salidaBase: toDatetimeLocal(servicio.horaSalidaBase2),
     llegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo2),
     inicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado2),
     llegadaDestino: toDatetimeLocal(servicio.horaLlegadaDestino2),
     termino: toDatetimeLocal(servicio.horaTermino2),
   };
-  const extras = parseTrasladosExtra(servicio.trasladosExtra);
-  const hasSecond = Object.values(second).some(Boolean);
-  return [first, ...(hasSecond ? [second] : []), ...extras];
+  const hasSecond = [second.salidaBase, second.llegadaRecojo, second.inicioTraslado, second.llegadaDestino, second.termino].some(Boolean);
+  return [first, ...(hasSecond ? [second] : [])];
 }
 
 function flattenTraslados(traslados: TrasladoHorario[]) {
   const list = traslados.length > 0 ? traslados : [emptyTraslado()];
   const first = list[0] || emptyTraslado();
-  const second = list[1] || emptyTraslado();
-  const extras = list.slice(2);
+  const rest = list.slice(1);
+  const second = rest[0] || emptyTraslado();
   return {
     horaSalidaBase: first.salidaBase || null,
     horaLlegadaRecojo: first.llegadaRecojo || null,
@@ -145,7 +161,7 @@ function flattenTraslados(traslados: TrasladoHorario[]) {
     horaInicioTraslado2: second.inicioTraslado || null,
     horaLlegadaDestino2: second.llegadaDestino || null,
     horaTermino2: second.termino || null,
-    trasladosExtra: extras.length > 0 ? JSON.stringify(extras) : null,
+    trasladosExtra: rest.length > 0 ? JSON.stringify(rest) : null,
   };
 }
 
@@ -431,6 +447,17 @@ export default function ServiciosList({ initialServicios }: Props) {
     setError("");
 
     try {
+      if (editForm.tipoServicio !== "Evento") {
+        const destinoFaltante = editForm.traslados
+          .map((traslado, index) => ({ traslado, index }))
+          .find(({ traslado, index }) => index >= 1 && !traslado.destino.trim());
+        if (destinoFaltante) {
+          setError(`Ingrese el Destino del traslado ${destinoFaltante.index + 1}.`);
+          setSaving(false);
+          return;
+        }
+      }
+
       const destinos = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
       const horarios = flattenTraslados(editForm.traslados);
       const response = await fetch("/api/servicios/" + editingServicio.id, {
@@ -643,7 +670,12 @@ export default function ServiciosList({ initialServicios }: Props) {
                     return (
                       <div key={index} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                         <div className="mb-4 flex items-center justify-between gap-3">
-                          <h4 className="text-sm font-black text-gray-800">Traslado {index + 1}</h4>
+                          <div>
+                            <h4 className="text-sm font-black text-gray-800">Traslado {index + 1}</h4>
+                            {index >= 1 && traslado.destino.trim() && (
+                              <p className="text-xs text-gray-500 mt-0.5">Destino: {traslado.destino}</p>
+                            )}
+                          </div>
                           {editForm.traslados.length > 1 && (
                             <button
                               type="button"
@@ -655,6 +687,16 @@ export default function ServiciosList({ initialServicios }: Props) {
                           )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                          {index >= 1 && (
+                            <div className="md:col-span-3">
+                              <Field
+                                label={`Destino del traslado ${index + 1} *`}
+                                value={traslado.destino}
+                                onChange={(value) => updateTraslado(index, "destino", value)}
+                              />
+                              <p className="mt-1 text-xs text-gray-400">Nombre del lugar al que está llegando en este traslado.</p>
+                            </div>
+                          )}
                           <Field label="Salida de ambulancia a recojo" type="datetime-local" value={traslado.salidaBase} onChange={(value) => updateTraslado(index, "salidaBase", value)} />
                           <Field label="Llegada al punto de recojo" type="datetime-local" value={traslado.llegadaRecojo} onChange={(value) => updateTraslado(index, "llegadaRecojo", value)} />
                           <Field label="Inicio del traslado" type="datetime-local" value={traslado.inicioTraslado} onChange={(value) => updateTraslado(index, "inicioTraslado", value)} />
