@@ -10,6 +10,7 @@ interface Props {
   paciente: string;
   edad: string;
   origen: string;
+  referencia: string;
   destinos: string[];
   esIdaYVuelta: boolean;
   diagnostico: string;
@@ -57,6 +58,7 @@ export default function PasoContactoCosto({
   paciente,
   edad,
   origen,
+  referencia,
   destinos,
   esIdaYVuelta,
   diagnostico,
@@ -157,7 +159,7 @@ export default function PasoContactoCosto({
 
 📍 *UBICACIONES*
 *Recojo:* ${origen}
-${observaciones ? `*Observaciones de recojo:* ${observaciones}\n` : ""}
+${referencia ? `*Referencia de Recojo:* ${referencia}\n` : ""}${observaciones ? `*Observaciones de recojo:* ${observaciones}\n` : ""}
 *Traslado a:*
 ${destinos
   .filter(Boolean)

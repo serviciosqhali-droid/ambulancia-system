@@ -1,8 +1,7 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
-import { UserPlus } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Plus, UserPlus, X } from "lucide-react";
 
 type Personal = {
   id: number;
@@ -45,15 +44,36 @@ const initial = {
   contactoEmergencia: "",
   direccion: "",
   cvArchivo: "",
-  certificadosArchivo: "",
 };
+
+function parseCertificados(value: string | null | undefined): string[] {
+  if (!value?.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.map(String).map((item) => item.trim()).filter(Boolean);
+    }
+  } catch {
+    // formato anterior: nombres separados por " / "
+  }
+  return value
+    .split(" / ")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function serializeCertificados(files: string[]) {
+  return files.length > 0 ? JSON.stringify(files) : "";
+}
 
 export default function PersonalPage() {
   const [items, setItems] = useState<Personal[]>([]);
   const [form, setForm] = useState(initial);
+  const [certificados, setCertificados] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const certificadosInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/personal")
@@ -64,6 +84,34 @@ export default function PersonalPage() {
 
   function setField(field: keyof typeof form, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function agregarCertificados(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const nuevos = Array.from(fileList).map((file) => file.name);
+    setCertificados((current) => {
+      const merged = [...current];
+      for (const name of nuevos) {
+        if (!merged.includes(name)) merged.push(name);
+      }
+      return merged;
+    });
+    if (certificadosInputRef.current) {
+      certificadosInputRef.current.value = "";
+    }
+  }
+
+  function quitarCertificado(nombre: string) {
+    setCertificados((current) => current.filter((item) => item !== nombre));
+  }
+
+  function resetForm() {
+    setForm(initial);
+    setCertificados([]);
+    setEditingId(null);
+    if (certificadosInputRef.current) {
+      certificadosInputRef.current.value = "";
+    }
   }
 
   async function guardar(event: FormEvent<HTMLFormElement>) {
@@ -79,7 +127,10 @@ export default function PersonalPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          certificadosArchivo: serializeCertificados(certificados),
+        }),
       });
 
       const data = await response.json();
@@ -91,12 +142,10 @@ export default function PersonalPage() {
         setItems((current) =>
           current.map((item) => (item.id === editingId ? data : item))
         );
-        setEditingId(null);
       } else {
         setItems((current) => [data, ...current]);
       }
-      setForm(initial);
-      setEditingId(null);
+      resetForm();
     } catch (err) {
       console.error("Error guardando personal", err);
       setError("Error de conexión.");
@@ -118,6 +167,7 @@ export default function PersonalPage() {
       }
 
       setItems((current) => current.filter((item) => item.id !== id));
+      if (editingId === id) resetForm();
     } catch (error) {
       console.error(error);
       alert("Error eliminando personal");
@@ -143,8 +193,8 @@ export default function PersonalPage() {
       contactoEmergencia: item.contactoEmergencia || "",
       direccion: item.direccion || "",
       cvArchivo: item.cvArchivo || "",
-      certificadosArchivo: item.certificadosArchivo || "",
     });
+    setCertificados(parseCertificados(item.certificadosArchivo));
 
     window.scrollTo({
       top: 0,
@@ -153,8 +203,8 @@ export default function PersonalPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div>
+    <>
+    <div>
         <h1 className="text-4xl font-black text-gray-800 flex items-center gap-3">
           <UserPlus className="text-red-600" />
           Personal Qhali Kay
@@ -243,32 +293,67 @@ export default function PersonalPage() {
             />
             <p className="text-xs text-gray-400 mt-1">{form.cvArchivo}</p>
           </label>
-          <label className="block">
+          <div className="block md:col-span-2">
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">
               Adjuntar certificados
             </span>
-            <input
-              type="file"
-              multiple
-              onChange={(e) =>
-                setField(
-                  "certificadosArchivo",
-                  Array.from(e.target.files || [])
-                    .map((file) => file.name)
-                    .join(" / ")
-                )
-              }
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm"
-            />
-            <p className="text-xs text-gray-400 mt-1">{form.certificadosArchivo}</p>
-          </label>
+            <div className="rounded-2xl border border-gray-200 p-4">
+              {certificados.length > 0 ? (
+                <ul className="mb-3 space-y-2">
+                  {certificados.map((nombre) => (
+                    <li
+                      key={nombre}
+                      className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2 text-sm text-gray-700"
+                    >
+                      <span className="truncate">{nombre}</span>
+                      <button
+                        type="button"
+                        onClick={() => quitarCertificado(nombre)}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        aria-label={`Quitar ${nombre}`}
+                      >
+                        <X size={14} />
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-3 text-xs text-gray-400">
+                  Aún no hay certificados. Puedes agregar varios.
+                </p>
+              )}
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:border-red-400 hover:text-red-600">
+                <Plus size={16} />
+                {certificados.length > 0 ? "Agregar más certificados" : "Elegir archivos"}
+                <input
+                  ref={certificadosInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => agregarCertificados(e.target.files)}
+                  className="sr-only"
+                />
+              </label>
+            </div>
+          </div>
         </div>
-        <button
-          disabled={saving}
-          className="mt-6 rounded-2xl bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-500 disabled:bg-red-300"
-        >
-          {saving ? "Guardando..." : editingId ? "Actualizar personal" : "Guardar personal"}
-        </button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            disabled={saving}
+            className="rounded-2xl bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-500 disabled:bg-red-300"
+          >
+            {saving ? "Guardando..." : editingId ? "Actualizar personal" : "Guardar personal"}
+          </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-2xl border border-gray-200 px-6 py-3 font-bold text-gray-600 hover:bg-gray-50"
+            >
+              Cancelar edición
+            </button>
+          )}
+        </div>
       </form>
       <div className="mt-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-black text-gray-800 mb-5">Personal registrado</h2>
@@ -276,7 +361,9 @@ export default function PersonalPage() {
           <p className="py-8 text-center text-gray-400">No hay personal registrado.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {items.map((item) => (
+            {items.map((item) => {
+              const certificadosItem = parseCertificados(item.certificadosArchivo);
+              return (
               <div key={item.id} className="rounded-2xl border border-gray-100 p-5">
                 <h3 className="font-black text-gray-800">{item.nombres}</h3>
                 <p className="text-sm text-red-600 font-semibold">
@@ -291,9 +378,18 @@ export default function PersonalPage() {
                 </p>
                 <p className="text-sm text-gray-500">Yape: {item.yape || "-"}</p>
                 <p className="text-sm text-gray-500">CV: {item.cvArchivo || "-"}</p>
-                <p className="text-sm text-gray-500">
-                  Certificados: {item.certificadosArchivo || "-"}
-                </p>
+                <div className="text-sm text-gray-500">
+                  <p>Certificados:</p>
+                  {certificadosItem.length === 0 ? (
+                    <p>-</p>
+                  ) : (
+                    <ul className="mt-1 list-disc pl-5">
+                      {certificadosItem.map((nombre) => (
+                        <li key={nombre}>{nombre}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => editar(item)}
@@ -310,11 +406,12 @@ export default function PersonalPage() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 
