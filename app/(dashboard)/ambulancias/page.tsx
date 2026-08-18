@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import {
   Truck,
   Plus,
@@ -179,8 +178,8 @@ export default function AmbulanciasPage() {
   const mantenimiento = ambulancias.filter((a) => a.estado === "Mantenimiento").length;
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
             <Truck size={36} className="text-red-600" />
@@ -470,6 +469,6 @@ export default function AmbulanciasPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }
