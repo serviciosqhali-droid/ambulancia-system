@@ -397,6 +397,7 @@ export default function NuevoServicioPage() {
           paciente={paciente}
           edad={edad}
           origen={origen}
+          referencia={referencia}
           destinos={destinos}
           esIdaYVuelta={esIdaYVuelta}
           diagnostico={diagnostico}

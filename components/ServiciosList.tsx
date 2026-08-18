@@ -913,7 +913,7 @@ function buildTrasladoWhatsapp(servicio: Servicio) {
     "",
     "📍 *UBICACIONES*",
     `*Recojo:* ${servicio.origen}`,
-    servicio.referencia ? `*Referencia:* ${servicio.referencia}` : "",
+    servicio.referencia ? `*Referencia de Recojo:* ${servicio.referencia}` : "",
     "",
     "*Traslado a:*",
     ...destinos.map((destino, index) => `${index + 1}. ${destino}`),
