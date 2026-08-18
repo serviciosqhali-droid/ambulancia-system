@@ -703,8 +703,12 @@ export default function ServiciosList({ initialServicios }: Props) {
                               <p className="mt-1 text-xs text-gray-400">Nombre del lugar al que está llegando en este traslado.</p>
                             </div>
                           )}
-                          <Field label="Salida de ambulancia a recojo" type="datetime-local" value={traslado.salidaBase} onChange={(value) => updateTraslado(index, "salidaBase", value)} />
-                          <Field label="Llegada al punto de recojo" type="datetime-local" value={traslado.llegadaRecojo} onChange={(value) => updateTraslado(index, "llegadaRecojo", value)} />
+                          {index === 0 && (
+                            <>
+                              <Field label="Salida de ambulancia a recojo" type="datetime-local" value={traslado.salidaBase} onChange={(value) => updateTraslado(index, "salidaBase", value)} />
+                              <Field label="Llegada al punto de recojo" type="datetime-local" value={traslado.llegadaRecojo} onChange={(value) => updateTraslado(index, "llegadaRecojo", value)} />
+                            </>
+                          )}
                           <Field label="Inicio del traslado" type="datetime-local" value={traslado.inicioTraslado} onChange={(value) => updateTraslado(index, "inicioTraslado", value)} />
                           <Field label="Llegada al destino" type="datetime-local" value={traslado.llegadaDestino} onChange={(value) => updateTraslado(index, "llegadaDestino", value)} />
                           <Field label="Término del servicio" type="datetime-local" value={traslado.termino} onChange={(value) => updateTraslado(index, "termino", value)} />
