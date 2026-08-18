@@ -1,4 +1,5 @@
 import { Prisma, type Servicio } from "@prisma/client";
+import { calcularTotalesServicio, type ServicioCostosInput } from "@/lib/costos-servicio";
 
 export const MAX_RANGE_DAYS = 366;
 
@@ -48,15 +49,8 @@ export function serviceRangeWhere(desde: Date, hasta: Date): Prisma.ServicioWher
 
 export type ServicioForExport = Servicio;
 
-export function totalServicio(servicio: {
-  costo: number | null;
-  costoEspera: number | null;
-  costoCamilla: number | null;
-  descuento: number | null;
-  costoOxigeno: number | null;
-  costoDestinoAdicional: number | null;
-}) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+export function totalServicio(servicio: ServicioCostosInput) {
+  return calcularTotalesServicio(servicio).total;
 }
 
 export function formatDateTime(value: Date | string | null) {

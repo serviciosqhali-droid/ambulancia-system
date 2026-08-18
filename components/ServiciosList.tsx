@@ -1,7 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Search, User } from "lucide-react";
+import { AlertCircle, Calendar, Copy, Edit3, Eye, Phone, Plus, Search, Trash2, User } from "lucide-react";
+import {
+  type TrasladoHorario,
+  buildTrasladosFromServicio,
+  calcularTotalesServicio,
+  costoEsperaFromMinutos,
+  minutesBetween,
+  money,
+  parseDestinos,
+} from "@/lib/costos-servicio";
 
 interface Servicio {
   id: number;
@@ -50,6 +59,7 @@ interface Servicio {
   horaInicioTraslado2: string | null;
   horaLlegadaDestino2: string | null;
   horaTermino2: string | null;
+  trasladosExtra: string | null;
   notas: string | null;
   createdAt: string;
   updatedAt: string | null;
@@ -65,7 +75,7 @@ type EditForm = Record<
   | "litrosOxigeno" | "prioridad" | "ambulancia" | "observaciones" | "contacto" | "telefono"
   | "email" | "costo" | "metodoPago" | "estado" | "fechaHora" | "comprobanteTipo"
   | "comprobanteNumero" | "horaSalidaBase" | "horaLlegadaRecojo" | "horaInicioTraslado"
-  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas",
+  | "costoOxigeno" | "costoDestinoAdicional" | "eventoDuracion" | "eventoUnidad" | "eventoDetallePersonal" | "eventoNombreEmpresa" | "eventoRuc" | "horaLlegadaDestino" | "horaTermino" | "horaSalidaBase2" | "horaLlegadaRecojo2" | "horaInicioTraslado2" | "horaLlegadaDestino2" | "horaTermino2" | "minutosEspera" | "camillaHoras" | "descuento" | "direccionEvento" | "notas" | "trasladosExtra",
   string
 > & {
   esIdaYVuelta: boolean;
@@ -73,18 +83,50 @@ type EditForm = Record<
   eventoRequiereMedico: boolean;
   eventoRequiereParamedico: boolean;
   eventoRequierePiloto: boolean;
+  traslados: TrasladoHorario[];
 };
 
 const camillaCostos: Record<string, number> = { "4": 350, "6": 400, "12": 750 };
-const estadosServicio = ["Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
+const estadosServicio = ["Por cotizar", "Cotización", "Confirmado", "En Curso", "Completado", "Cancelado"];
 
-function parseDestinos(destinosStr: string): string[] {
-  try {
-    const parsed = JSON.parse(destinosStr);
-    return Array.isArray(parsed) ? parsed : [destinosStr];
-  } catch {
-    return [destinosStr];
-  }
+function emptyTraslado(): TrasladoHorario {
+  return {
+    destino: "",
+    salidaBase: "",
+    llegadaRecojo: "",
+    inicioTraslado: "",
+    llegadaDestino: "",
+    termino: "",
+  };
+}
+
+function flattenTraslados(traslados: TrasladoHorario[]) {
+  const list = traslados.length > 0 ? traslados : [emptyTraslado()];
+  const first = list[0] || emptyTraslado();
+  const rest = list.slice(1);
+  const second = rest[0] || emptyTraslado();
+  return {
+    horaSalidaBase: first.salidaBase || null,
+    horaLlegadaRecojo: first.llegadaRecojo || null,
+    horaInicioTraslado: first.inicioTraslado || null,
+    horaLlegadaDestino: first.llegadaDestino || null,
+    horaTermino: first.termino || null,
+    horaSalidaBase2: second.salidaBase || null,
+    horaLlegadaRecojo2: second.llegadaRecojo || null,
+    horaInicioTraslado2: second.inicioTraslado || null,
+    horaLlegadaDestino2: second.llegadaDestino || null,
+    horaTermino2: second.termino || null,
+    trasladosExtra: rest.length > 0 ? JSON.stringify(rest) : null,
+  };
+}
+
+function formatEspera(minutos: number) {
+  if (minutos <= 0) return "0 min";
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+  if (horas <= 0) return `${mins} min`;
+  if (mins <= 0) return `${horas} h`;
+  return `${horas} h ${mins} min`;
 }
 
 function toDatetimeLocal(value: string | null) {
@@ -98,10 +140,6 @@ function toDatetimeLocal(value: string | null) {
 function formatDate(value: string | null) {
   if (!value) return "No registrado";
   return new Date(value).toLocaleString("es-PE", { dateStyle: "short", timeStyle: "short" });
-}
-
-function money(value: number | null | undefined) {
-  return "S/. " + (value || 0).toFixed(2);
 }
 
 function serviceCode(servicio: Servicio) {
@@ -125,15 +163,8 @@ function estadoBadgeClass(estado: string | null) {
   if (estado === "Confirmado") return "border-blue-200 bg-blue-50 text-blue-700";
   if (estado === "En Curso") return "border-yellow-200 bg-yellow-50 text-yellow-700";
   if (estado === "Cancelado") return "border-red-200 bg-red-50 text-red-700";
+  if (estado === "Por cotizar" || estado === "Cotización") return "border-slate-200 bg-slate-50 text-slate-700";
   return "border-slate-200 bg-slate-50 text-slate-700";
-}
-
-function minutesBetween(start: string, end: string) {
-  if (!start || !end) return 0;
-  const startTime = new Date(start).getTime();
-  const endTime = new Date(end).getTime();
-  if (Number.isNaN(startTime) || Number.isNaN(endTime) || endTime <= startTime) return 0;
-  return Math.ceil((endTime - startTime) / 60000);
 }
 
 function parseEventoPersonal(notas: string | null) {
@@ -158,6 +189,8 @@ function buildEventoNotasFromForm(form: EditForm) {
     "Duración: " + (form.eventoDuracion || "0") + " " + (form.eventoUnidad || "Horas"),
     "Personal requerido: " + (personal.join(" / ") || "No especificado"),
     form.eventoDetallePersonal ? "Detalle de personal: " + form.eventoDetallePersonal : "",
+    form.eventoNombreEmpresa.trim() ? "Nombre de la empresa: " + form.eventoNombreEmpresa.trim() : "",
+    form.eventoRuc.trim() ? "RUC: " + form.eventoRuc.trim() : "",
     form.observaciones ? "Observaciones: " + form.observaciones : "",
     form.notas,
   ].filter(Boolean).join("\n");
@@ -195,6 +228,8 @@ function buildEditForm(servicio: Servicio): EditForm {
     eventoDuracion: getEventoDato(servicio.notas, "Duración").split(" ")[0] || "",
     eventoUnidad: getEventoDato(servicio.notas, "Duración").split(" ").slice(1).join(" ") || "Horas",
     eventoDetallePersonal: getEventoDato(servicio.notas, "Detalle de personal") || "",
+    eventoNombreEmpresa: getEventoDato(servicio.notas, "Nombre de la empresa") || "",
+    eventoRuc: getEventoDato(servicio.notas, "RUC") || "",
     horaSalidaBase: toDatetimeLocal(servicio.horaSalidaBase),
     horaLlegadaRecojo: toDatetimeLocal(servicio.horaLlegadaRecojo),
     horaInicioTraslado: toDatetimeLocal(servicio.horaInicioTraslado),
@@ -205,6 +240,8 @@ function buildEditForm(servicio: Servicio): EditForm {
     horaInicioTraslado2: toDatetimeLocal(servicio.horaInicioTraslado2),
     horaLlegadaDestino2: toDatetimeLocal(servicio.horaLlegadaDestino2),
     horaTermino2: toDatetimeLocal(servicio.horaTermino2),
+    trasladosExtra: servicio.trasladosExtra || "",
+    traslados: buildTrasladosFromServicio(servicio),
     minutosEspera: servicio.minutosEspera?.toString() || "0",
     alquilerCamilla: servicio.alquilerCamilla,
     eventoRequiereMedico: parseEventoPersonal(servicio.notas).medico,
@@ -243,17 +280,63 @@ export default function ServiciosList({ initialServicios }: Props) {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  const resumenHoy = useMemo(() => {
+    const ingresos = servicios.reduce(
+      (total, servicio) => total + calcularTotalesServicio(servicio).total,
+      0
+    );
+    return {
+      totalServicios: servicios.length,
+      enCurso: servicios.filter((servicio) => servicio.estado === "En Curso").length,
+      traslados: servicios.filter((servicio) => servicio.tipoServicio === "Traslado").length,
+      ingresos,
+    };
+  }, [servicios]);
+
   const costosEdicion = useMemo(() => {
-    if (!editForm) return { espera: 0, camilla: 0, total: 0 };
+    if (!editForm) {
+      return {
+        espera: 0,
+        camilla: 0,
+        total: 0,
+        minutosEspera: 0,
+        esperasPorTraslado: [] as number[],
+        descuento: 0,
+        oxigeno: 0,
+        destinosExtra: 0,
+        destinos: 0,
+      };
+    }
     const base = Number(editForm.costo) || 0;
-    const minutosEspera = minutesBetween(editForm.horaLlegadaDestino, editForm.horaTermino);
-    const espera = minutosEspera > 0 ? Math.ceil(minutosEspera / 30) * 50 : 0;
+    const esperasPorTraslado = (editForm.traslados || []).map((traslado) =>
+      minutesBetween(traslado.llegadaDestino, traslado.termino)
+    );
+    const minutosEspera = esperasPorTraslado.reduce((total, minutos) => total + minutos, 0);
+    const espera = costoEsperaFromMinutos(minutosEspera);
     const camilla = editForm.alquilerCamilla ? camillaCostos[editForm.camillaHoras] || 0 : 0;
     const descuento = Number(editForm.descuento) || 0;
     const oxigeno = editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0;
-    const destinos = Math.max(editForm.destinos.split("\n").filter((destino) => destino.trim()).length - 1, 0);
+    const destinosLista = [
+      ...editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean),
+      ...(editForm.traslados || [])
+        .slice(1)
+        .map((traslado) => traslado.destino.trim())
+        .filter(Boolean),
+    ];
+    const destinosUnicos = Array.from(new Set(destinosLista));
+    const destinos = Math.max(destinosUnicos.length - 1, 0);
     const destinosExtra = destinos * (Number(editForm.costoDestinoAdicional) || 0);
-    return { espera, camilla, descuento, oxigeno, destinosExtra, destinos, minutosEspera, total: Math.max(base + espera + camilla + oxigeno + destinosExtra - descuento, 0) };
+    return {
+      espera,
+      camilla,
+      descuento,
+      oxigeno,
+      destinosExtra,
+      destinos,
+      minutosEspera,
+      esperasPorTraslado,
+      total: Math.max(base + espera + camilla + oxigeno + destinosExtra - descuento, 0),
+    };
   }, [editForm]);
 
   function openEdit(servicio: Servicio) {
@@ -264,18 +347,47 @@ export default function ServiciosList({ initialServicios }: Props) {
   }
 
   function updateForm<K extends keyof EditForm>(key: K, value: EditForm[K]) {
-    setEditForm((current) => current ? { ...current, [key]: value } : current);
+    setEditForm((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  function updateTraslado(index: number, field: keyof TrasladoHorario, value: string) {
+    setEditForm((current) => {
+      if (!current) return current;
+      const traslados = current.traslados.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, [field]: value } : item
+      );
+      return { ...current, traslados };
+    });
+  }
+
+  function agregarTraslado() {
+    setEditForm((current) =>
+      current ? { ...current, traslados: [...current.traslados, emptyTraslado()] } : current
+    );
+  }
+
+  function eliminarTraslado(index: number) {
+    setEditForm((current) => {
+      if (!current) return current;
+      if (current.traslados.length <= 1) {
+        return { ...current, traslados: [emptyTraslado()] };
+      }
+      return {
+        ...current,
+        traslados: current.traslados.filter((_, itemIndex) => itemIndex !== index),
+      };
+    });
   }
 
   async function cambiarEstadoRapido(servicio: Servicio, nuevoEstado: string) {
+    if (!nuevoEstado || nuevoEstado === servicio.estado) return;
+
     try {
       const response = await fetch("/api/servicios/" + servicio.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...servicio,
           estado: nuevoEstado,
-          destinos: parseDestinos(servicio.destinos),
         }),
       });
 
@@ -302,12 +414,30 @@ export default function ServiciosList({ initialServicios }: Props) {
     setError("");
 
     try {
-      const destinos = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
+      if (editForm.tipoServicio !== "Evento") {
+        const destinoFaltante = editForm.traslados
+          .map((traslado, index) => ({ traslado, index }))
+          .find(({ traslado, index }) => index >= 1 && !traslado.destino.trim());
+        if (destinoFaltante) {
+          setError(`Ingrese el Destino del traslado ${destinoFaltante.index + 1}.`);
+          setSaving(false);
+          return;
+        }
+      }
+
+      const destinosBase = editForm.destinos.split("\n").map((destino) => destino.trim()).filter(Boolean);
+      const destinosTraslados = editForm.traslados
+        .slice(1)
+        .map((traslado) => traslado.destino.trim())
+        .filter(Boolean);
+      const destinos = Array.from(new Set([...destinosBase, ...destinosTraslados]));
+      const horarios = flattenTraslados(editForm.traslados);
       const response = await fetch("/api/servicios/" + editingServicio.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...editForm,
+          ...horarios,
           destinos,
           edad: editForm.edad ? Number(editForm.edad) : null,
           peso: editForm.peso ? Number(editForm.peso) : null,
@@ -344,7 +474,30 @@ export default function ServiciosList({ initialServicios }: Props) {
 
   return (
     <div className="mt-10">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Servicios Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-gray-800">{resumenHoy.totalServicios}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados durante el día</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">En Curso Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-orange-500">{resumenHoy.enCurso}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Activos en este momento</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Traslados Hoy</p>
+          <h2 className="text-4xl font-black mt-4 text-blue-600">{resumenHoy.traslados}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados del día</p>
+        </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <p className="text-gray-500 text-sm font-semibold">Ingresos Hoy</p>
+          <h2 className="text-3xl font-black mt-4 text-green-600">{money(resumenHoy.ingresos)}</h2>
+          <p className="text-xs text-gray-400 mt-2 font-medium">Traslado + espera + adicionales</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-10">
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           <div className="relative w-full lg:w-[450px]">
             <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
@@ -353,6 +506,7 @@ export default function ServiciosList({ initialServicios }: Props) {
           <div className="flex gap-4 self-end lg:self-center w-full lg:w-auto">
             <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} className="w-1/2 lg:w-44 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 bg-white cursor-pointer">
               <option value="Todos">Todos los Estados</option>
+              <option value="Por cotizar">Por cotizar</option>
               <option value="Cotización">Cotización</option>
               <option value="Confirmado">Confirmado</option>
               <option value="En Curso">En Curso</option>
@@ -377,7 +531,7 @@ export default function ServiciosList({ initialServicios }: Props) {
             </div>
           ) : sortedServicios.map((servicio) => {
             const destinos = parseDestinos(servicio.destinos);
-            const totalServicio = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+            const totales = calcularTotalesServicio(servicio);
             return (
               <div key={servicio.id} className="bg-white border border-slate-200 hover:border-slate-300 rounded-2xl px-5 py-4 transition-all hover:shadow-sm">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -399,7 +553,7 @@ export default function ServiciosList({ initialServicios }: Props) {
                         {servicio.contacto && <span className="flex items-center gap-1"><User size={12} /> {servicio.contacto}</span>}
                         {servicio.telefono && <span className="flex items-center gap-1"><Phone size={12} /> {servicio.telefono}</span>}
                         <span className="flex items-center gap-1">{servicio.tipoServicio === "Evento" ? <Calendar size={12} /> : <span>⌖</span>} {servicio.tipoServicio === "Evento" ? servicio.origen : destinos[0] || "Sin destino"}</span>
-                        <span className="font-black text-green-600">{money(totalServicio)}</span>
+                        <span className="font-black text-green-600">{money(totales.total)}</span>
                         <span>{shortDate(servicio.fechaHora || servicio.createdAt)}</span>
                       </div>
                     </div>
@@ -453,6 +607,17 @@ export default function ServiciosList({ initialServicios }: Props) {
                 <SelectField label="Estado" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
                 <Field label="Fecha y hora programada" type="datetime-local" value={editForm.fechaHora} onChange={(value) => updateForm("fechaHora", value)} />
                 <SelectField label="Método de pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Yape", "Transferencia", "Efectivo", "Tarjeta"]} />
+                <Field
+                  label="Costo del traslado (S/.) *"
+                  type="number"
+                  value={editForm.costo}
+                  onChange={(value) => updateForm("costo", value)}
+                />
+                <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
+                  <p className="text-sm font-bold text-green-800">Total actual</p>
+                  <p className="text-xs text-green-700 mt-1">Traslado + espera + adicionales − descuento</p>
+                  <p className="text-2xl font-black text-green-700 mt-2">{money(costosEdicion.total)}</p>
+                </div>
               </div>
             )}
 
@@ -485,6 +650,8 @@ export default function ServiciosList({ initialServicios }: Props) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <Field label="Nombre del Contacto *" value={editForm.contacto} onChange={(value) => updateForm("contacto", value)} />
                   <Field label="Teléfono *" value={editForm.telefono} onChange={(value) => updateForm("telefono", value.replace(/\D/g, "").slice(0, 9))} />
+                  <Field label="Nombre de la empresa (opcional)" value={editForm.eventoNombreEmpresa} onChange={(value) => updateForm("eventoNombreEmpresa", value)} />
+                  <Field label="RUC (opcional)" value={editForm.eventoRuc} onChange={(value) => updateForm("eventoRuc", value.replace(/\D/g, "").slice(0, 11))} />
                   <div className="md:col-span-2"><Field label="Email" type="email" value={editForm.email} onChange={(value) => updateForm("email", value)} /></div>
                   <SelectField label="Estado *" value={editForm.estado} onChange={(value) => updateForm("estado", value)} options={estadosServicio} />
                   <SelectField label="Método de Pago" value={editForm.metodoPago} onChange={(value) => updateForm("metodoPago", value)} options={["Efectivo", "Yape", "Transferencia", "Tarjeta"]} />
@@ -502,32 +669,80 @@ export default function ServiciosList({ initialServicios }: Props) {
                   <Field label="Litros de oxígeno" type="number" value={editForm.litrosOxigeno} onChange={(value) => updateForm("litrosOxigeno", value)} />
                 </div>
 
-                <SectionTitle title="Tiempos del servicio" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Salida de ambulancia a recojo" type="datetime-local" value={editForm.horaSalidaBase} onChange={(value) => updateForm("horaSalidaBase", value)} />
-                  <Field label="Llegada al punto de recojo" type="datetime-local" value={editForm.horaLlegadaRecojo} onChange={(value) => updateForm("horaLlegadaRecojo", value)} />
-                  <Field label="Inicio del traslado" type="datetime-local" value={editForm.horaInicioTraslado} onChange={(value) => updateForm("horaInicioTraslado", value)} />
-                  <Field label="Llegada al destino" type="datetime-local" value={editForm.horaLlegadaDestino} onChange={(value) => updateForm("horaLlegadaDestino", value)} />
-                  <Field label="Término del servicio" type="datetime-local" value={editForm.horaTermino} onChange={(value) => updateForm("horaTermino", value)} />
-                  <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
-                    <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
-                    <p className="text-2xl font-black text-yellow-700 mt-2">{costosEdicion.minutosEspera} min</p>
-                    <p className="text-xs text-yellow-700 mt-1">Desde llegada al destino hasta término del servicio.</p>
+                <SectionTitle title="Tiempos de traslados" />
+                <div className="space-y-5">
+                  {editForm.traslados.map((traslado, index) => {
+                    const minutosTraslado = costosEdicion.esperasPorTraslado?.[index] || 0;
+                    return (
+                      <div key={index} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-black text-gray-800">Traslado {index + 1}</h4>
+                            {index >= 1 && traslado.destino.trim() && (
+                              <p className="text-xs text-gray-500 mt-0.5">Destino: {traslado.destino}</p>
+                            )}
+                          </div>
+                          {editForm.traslados.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => eliminarTraslado(index)}
+                              className="inline-flex items-center gap-1 rounded-xl border border-red-100 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 size={14} /> Quitar
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                          {index >= 1 && (
+                            <div className="md:col-span-3">
+                              <Field
+                                label={`Destino del traslado ${index + 1} *`}
+                                value={traslado.destino}
+                                onChange={(value) => updateTraslado(index, "destino", value)}
+                              />
+                              <p className="mt-1 text-xs text-gray-400">Nombre del lugar al que está llegando en este traslado.</p>
+                            </div>
+                          )}
+                          {index === 0 && (
+                            <>
+                              <Field label="Salida de ambulancia a recojo" type="datetime-local" value={traslado.salidaBase} onChange={(value) => updateTraslado(index, "salidaBase", value)} />
+                              <Field label="Llegada al punto de recojo" type="datetime-local" value={traslado.llegadaRecojo} onChange={(value) => updateTraslado(index, "llegadaRecojo", value)} />
+                            </>
+                          )}
+                          <Field label="Inicio del traslado" type="datetime-local" value={traslado.inicioTraslado} onChange={(value) => updateTraslado(index, "inicioTraslado", value)} />
+                          <Field label="Llegada al destino" type="datetime-local" value={traslado.llegadaDestino} onChange={(value) => updateTraslado(index, "llegadaDestino", value)} />
+                          <Field label="Término del servicio" type="datetime-local" value={traslado.termino} onChange={(value) => updateTraslado(index, "termino", value)} />
+                          <div className="rounded-2xl bg-yellow-50 border border-yellow-100 p-4">
+                            <p className="text-sm font-bold text-yellow-800">Espera calculada</p>
+                            <p className="text-2xl font-black text-yellow-700 mt-2">{formatEspera(minutosTraslado)}</p>
+                            <p className="text-xs text-yellow-700 mt-1">Entre llegada al destino y término del servicio.</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-dashed border-gray-200 bg-white p-4">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">Espera total de todos los traslados</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatEspera(costosEdicion.minutosEspera || 0)} · cobro estimado {money(costosEdicion.espera)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={agregarTraslado}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                    >
+                      <Plus size={16} /> Agregar traslado
+                    </button>
                   </div>
-                </div>
-
-                <SectionTitle title="Segundo traslado (opcional)" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Salida de ambulancia a segundo recojo" type="datetime-local" value={editForm.horaSalidaBase2} onChange={(value) => updateForm("horaSalidaBase2", value)} />
-                  <Field label="Llegada al segundo recojo" type="datetime-local" value={editForm.horaLlegadaRecojo2} onChange={(value) => updateForm("horaLlegadaRecojo2", value)} />
-                  <Field label="Inicio segundo traslado" type="datetime-local" value={editForm.horaInicioTraslado2} onChange={(value) => updateForm("horaInicioTraslado2", value)} />
-                  <Field label="Llegada segundo destino" type="datetime-local" value={editForm.horaLlegadaDestino2} onChange={(value) => updateForm("horaLlegadaDestino2", value)} />
-                  <Field label="Término segundo servicio" type="datetime-local" value={editForm.horaTermino2} onChange={(value) => updateForm("horaTermino2", value)} />
                 </div>
 
                 <SectionTitle title="Costos adicionales y comprobante" />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Costo base del servicio" type="number" value={editForm.costo} onChange={(value) => updateForm("costo", value)} />
+                  <div className="md:col-span-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    El <span className="font-bold">Costo del traslado</span> inicial aparece arriba y se suma automáticamente con espera, camilla, oxígeno y destinos adicionales.
+                  </div>
                   <SelectField label="Alquiler de camilla" value={editForm.alquilerCamilla ? editForm.camillaHoras : ""} onChange={(value) => { updateForm("alquilerCamilla", Boolean(value)); updateForm("camillaHoras", value); }} options={["", "4", "6", "12"]} optionLabels={{ "": "No alquila camilla", "4": "4 horas - S/. 350", "6": "6 horas - S/. 400", "12": "12 horas - S/. 750" }} />
                   <SelectField label="Tipo de comprobante" value={editForm.comprobanteTipo} onChange={(value) => updateForm("comprobanteTipo", value)} options={["", "Boleta", "Factura"]} optionLabels={{ "": "Sin comprobante", Boleta: "Boleta", Factura: "Factura" }} />
                   <Field label="Número de comprobante" value={editForm.comprobanteNumero} onChange={(value) => updateForm("comprobanteNumero", value)} />
@@ -537,7 +752,8 @@ export default function ServiciosList({ initialServicios }: Props) {
                   <TextAreaField label="Notas internas" value={editForm.notas} onChange={(value) => updateForm("notas", value)} />
                   <div className="rounded-2xl bg-green-50 border border-green-100 p-4">
                     <p className="text-sm font-bold text-green-800">Resumen de cobro</p>
-                    <p className="text-xs text-green-700 mt-2">Espera: {money(costosEdicion.espera)}</p>
+                    <p className="text-xs text-green-700 mt-2">Costo del traslado: {money(Number(editForm.costo) || 0)}</p>
+                    <p className="text-xs text-green-700">Espera ({formatEspera(costosEdicion.minutosEspera || 0)}): {money(costosEdicion.espera)}</p>
                     <p className="text-xs text-green-700">Camilla: {money(costosEdicion.camilla)}</p>
                     <p className="text-xs text-green-700">Oxígeno: {money(costosEdicion.oxigeno)}</p>
                     <p className="text-xs text-green-700">Destinos extra ({costosEdicion.destinos}): {money(costosEdicion.destinosExtra)}</p>
@@ -569,6 +785,8 @@ function buildEventoWhatsapp(servicio: Servicio) {
   const duracion = getEventoDato(servicio.notas, "Duración") || "No especificado";
   const personal = getEventoDato(servicio.notas, "Personal requerido") || "No especificado";
   const detallePersonal = getEventoDato(servicio.notas, "Detalle de personal");
+  const nombreEmpresa = getEventoDato(servicio.notas, "Nombre de la empresa");
+  const ruc = getEventoDato(servicio.notas, "RUC");
 
   return [
     "📣 *ALQUILER PARA EVENTO*",
@@ -589,6 +807,8 @@ function buildEventoWhatsapp(servicio: Servicio) {
     "📞 *CONTACTO*",
     `*Nombre:* ${servicio.contacto || "No especificado"}`,
     `*Teléfono:* ${servicio.telefono || "No especificado"}`,
+    nombreEmpresa ? `*Empresa:* ${nombreEmpresa}` : "",
+    ruc ? `*RUC:* ${ruc}` : "",
     servicio.email ? `*Email:* ${servicio.email}` : "",
   ].filter(Boolean).join("\n");
 }
@@ -664,6 +884,8 @@ function DetalleEventoModal({ servicio, onClose, onEdit }: { servicio: Servicio;
               <div className="mt-4 space-y-3 text-sm">
                 <DetailItem label="Nombre" value={servicio.contacto || "No especificado"} />
                 <DetailItem label="Teléfono" value={servicio.telefono || "No especificado"} />
+                <DetailItem label="Empresa" value={getEventoDato(servicio.notas, "Nombre de la empresa") || "No especificado"} />
+                <DetailItem label="RUC" value={getEventoDato(servicio.notas, "RUC") || "No especificado"} />
                 <DetailItem label="Email" value={servicio.email || "No especificado"} />
               </div>
             </section>
@@ -695,7 +917,7 @@ function buildTrasladoWhatsapp(servicio: Servicio) {
     "",
     "📍 *UBICACIONES*",
     `*Recojo:* ${servicio.origen}`,
-    servicio.referencia ? `*Referencia:* ${servicio.referencia}` : "",
+    servicio.referencia ? `*Referencia de Recojo:* ${servicio.referencia}` : "",
     "",
     "*Traslado a:*",
     ...destinos.map((destino, index) => `${index + 1}. ${destino}`),
@@ -708,7 +930,7 @@ function buildTrasladoWhatsapp(servicio: Servicio) {
     `*Nombre:* ${servicio.contacto || "No especificado"}`,
     `*Teléfono:* ${servicio.telefono || "No especificado"}`,
     "",
-    `💰 *Costo:* ${money((servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0))}`,
+    `💰 *Costo:* ${money(calcularTotalesServicio(servicio).total)}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -718,7 +940,7 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
   }
 
   const destinos = parseDestinos(servicio.destinos);
-  const total = (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) + (servicio.costoOxigeno || 0) + (servicio.costoDestinoAdicional || 0) - (servicio.descuento || 0);
+  const totales = calcularTotalesServicio(servicio);
   const mensaje = buildTrasladoWhatsapp(servicio);
 
   async function copiarWhatsapp() {
@@ -815,7 +1037,15 @@ function DetalleModal({ servicio, onClose, onEdit }: { servicio: Servicio; onClo
 
             <section className="rounded-2xl border border-green-200 bg-green-50 p-5">
               <h4 className="font-black text-gray-900">Costo del Servicio</h4>
-              <p className="mt-5 text-4xl font-black text-green-700">$ {money(total).replace("S/. ", "S/. ")}</p>
+              <div className="mt-4 space-y-1 text-sm text-green-800">
+                <p>Costo del traslado: {money(totales.costoBase)}</p>
+                <p>Espera ({formatEspera(totales.minutosEspera)}): {money(totales.costoEspera)}</p>
+                <p>Camilla: {money(totales.costoCamilla)}</p>
+                <p>Oxígeno: {money(totales.costoOxigeno)}</p>
+                <p>Destinos adicionales ({totales.destinosExtraCount}): {money(totales.costoDestinosExtra)}</p>
+                <p>Descuento: -{money(totales.descuento)}</p>
+              </div>
+              <p className="mt-4 text-4xl font-black text-green-700">{money(totales.total)}</p>
             </section>
 
             <section className="rounded-2xl bg-white border border-gray-200 p-5">
