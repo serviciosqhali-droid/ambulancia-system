@@ -200,8 +200,19 @@ export async function PUT(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "Servicio no encontrado" }, { status: 404 });
     }
 
+    const detail =
+      error instanceof Error
+        ? error.message.split("\n").filter(Boolean)[0] || error.message
+        : "Error desconocido";
+
     return NextResponse.json(
-      { error: "Error al actualizar el servicio" },
+      {
+        error: "Error al actualizar el servicio",
+        detail:
+          detail.includes("trasladosExtra") || detail.includes("column")
+            ? "La base de datos no está actualizada. Ejecuta: npx prisma db push"
+            : detail,
+      },
       { status: 500 }
     );
   }

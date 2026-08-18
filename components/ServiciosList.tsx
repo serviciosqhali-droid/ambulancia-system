@@ -106,18 +106,37 @@ function flattenTraslados(traslados: TrasladoHorario[]) {
   const rest = list.slice(1);
   const second = rest[0] || emptyTraslado();
   return {
-    horaSalidaBase: first.salidaBase || null,
-    horaLlegadaRecojo: first.llegadaRecojo || null,
-    horaInicioTraslado: first.inicioTraslado || null,
-    horaLlegadaDestino: first.llegadaDestino || null,
-    horaTermino: first.termino || null,
-    horaSalidaBase2: second.salidaBase || null,
-    horaLlegadaRecojo2: second.llegadaRecojo || null,
-    horaInicioTraslado2: second.inicioTraslado || null,
-    horaLlegadaDestino2: second.llegadaDestino || null,
-    horaTermino2: second.termino || null,
-    trasladosExtra: rest.length > 0 ? JSON.stringify(rest) : null,
+    horaSalidaBase: toApiDate(first.salidaBase),
+    horaLlegadaRecojo: toApiDate(first.llegadaRecojo),
+    horaInicioTraslado: toApiDate(first.inicioTraslado),
+    horaLlegadaDestino: toApiDate(first.llegadaDestino),
+    horaTermino: toApiDate(first.termino),
+    horaSalidaBase2: toApiDate(second.salidaBase),
+    horaLlegadaRecojo2: toApiDate(second.llegadaRecojo),
+    horaInicioTraslado2: toApiDate(second.inicioTraslado),
+    horaLlegadaDestino2: toApiDate(second.llegadaDestino),
+    horaTermino2: toApiDate(second.termino),
+    trasladosExtra:
+      rest.length > 0
+        ? JSON.stringify(
+            rest.map((traslado) => ({
+              ...traslado,
+              salidaBase: toApiDate(traslado.salidaBase) || "",
+              llegadaRecojo: toApiDate(traslado.llegadaRecojo) || "",
+              inicioTraslado: toApiDate(traslado.inicioTraslado) || "",
+              llegadaDestino: toApiDate(traslado.llegadaDestino) || "",
+              termino: toApiDate(traslado.termino) || "",
+            }))
+          )
+        : null,
   };
+}
+
+function toApiDate(value: string | null | undefined) {
+  if (!value || !String(value).trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 function formatEspera(minutos: number) {
@@ -432,30 +451,59 @@ export default function ServiciosList({ initialServicios }: Props) {
         .filter(Boolean);
       const destinos = Array.from(new Set([...destinosBase, ...destinosTraslados]));
       const horarios = flattenTraslados(editForm.traslados);
+      const payload = {
+        paciente: editForm.paciente,
+        edad: editForm.edad ? Number(editForm.edad) : null,
+        peso: editForm.peso ? Number(editForm.peso) : null,
+        tipoServicio: editForm.tipoServicio,
+        origen: editForm.origen,
+        referencia: editForm.referencia || null,
+        destinos,
+        esIdaYVuelta: Boolean(editForm.esIdaYVuelta),
+        diagnostico: editForm.diagnostico || null,
+        enfermedadFondo: editForm.enfermedadFondo || null,
+        sintomas: editForm.sintomas || null,
+        tratamientoActual: editForm.tratamientoActual || null,
+        requiereOxigeno: editForm.requiereOxigeno || "No",
+        litrosOxigeno: editForm.litrosOxigeno ? Number(editForm.litrosOxigeno) : null,
+        prioridad: editForm.prioridad || null,
+        ambulancia: editForm.ambulancia || null,
+        observaciones: editForm.observaciones || null,
+        contacto: editForm.contacto || null,
+        telefono: editForm.telefono || null,
+        email: editForm.email || null,
+        costo: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costo) || 0,
+        metodoPago: editForm.metodoPago || null,
+        estado: editForm.estado || null,
+        fechaHora: toApiDate(editForm.fechaHora),
+        comprobanteTipo: editForm.comprobanteTipo || null,
+        comprobanteNumero: editForm.comprobanteNumero || null,
+        direccionEvento: editForm.direccionEvento || null,
+        ...horarios,
+        minutosEspera: costosEdicion.minutosEspera,
+        costoEspera: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.espera,
+        camillaHoras: editForm.alquilerCamilla && editForm.camillaHoras ? Number(editForm.camillaHoras) : null,
+        costoCamilla: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.camilla,
+        descuento: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.descuento) || 0,
+        costoOxigeno:
+          editForm.tipoServicio === "Evento"
+            ? 0
+            : editForm.requiereOxigeno === "Si"
+              ? Number(editForm.costoOxigeno) || 0
+              : 0,
+        costoDestinoAdicional:
+          editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costoDestinoAdicional) || 0,
+        alquilerCamilla: Boolean(editForm.alquilerCamilla),
+        notas: editForm.tipoServicio === "Evento" ? buildEventoNotasFromForm(editForm) : editForm.notas || null,
+      };
       const response = await fetch("/api/servicios/" + editingServicio.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...editForm,
-          ...horarios,
-          destinos,
-          edad: editForm.edad ? Number(editForm.edad) : null,
-          peso: editForm.peso ? Number(editForm.peso) : null,
-          litrosOxigeno: editForm.litrosOxigeno ? Number(editForm.litrosOxigeno) : null,
-          costo: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costo) || 0,
-          minutosEspera: costosEdicion.minutosEspera,
-          costoEspera: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.espera,
-          camillaHoras: editForm.alquilerCamilla && editForm.camillaHoras ? Number(editForm.camillaHoras) : null,
-          costoCamilla: editForm.tipoServicio === "Evento" ? 0 : costosEdicion.camilla,
-          descuento: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.descuento) || 0,
-          costoOxigeno: editForm.tipoServicio === "Evento" ? 0 : editForm.requiereOxigeno === "Si" ? Number(editForm.costoOxigeno) || 0 : 0,
-          costoDestinoAdicional: editForm.tipoServicio === "Evento" ? 0 : Number(editForm.costoDestinoAdicional) || 0,
-          notas: editForm.tipoServicio === "Evento" ? buildEventoNotasFromForm(editForm) : editForm.notas,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || "No se pudo actualizar el servicio.");
+        setError(data.detail || data.error || "No se pudo actualizar el servicio.");
         return;
       }
 

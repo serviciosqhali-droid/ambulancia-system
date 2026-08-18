@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "fresh": "rm -rf .next && next dev"
+    "fresh": "npx prisma db push && npx prisma generate && rm -rf .next && next dev"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
