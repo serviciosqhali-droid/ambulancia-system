@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import DashboardLayout from "@/components/Layout/DashboardLayout";
 import ServiciosList from "@/components/ServiciosList";
 import Link from "next/link";
 import { Plus } from "lucide-react";
@@ -23,15 +22,6 @@ function serviceDateWhere(inicio: Date, fin: Date) {
   };
 }
 
-function totalServicio(servicio: {
-  costo: number | null;
-  costoEspera: number | null;
-  costoCamilla: number | null;
-  descuento: number | null;
-}) {
-  return (servicio.costo || 0) + (servicio.costoEspera || 0) + (servicio.costoCamilla || 0) - (servicio.descuento || 0);
-}
-
 export default async function ServiciosPage() {
   const { inicio, fin } = todayRange();
   const filtroHoy = serviceDateWhere(inicio, fin);
@@ -42,11 +32,6 @@ export default async function ServiciosPage() {
       createdAt: "desc",
     },
   });
-
-  const totalServicios = servicios.length;
-  const enCurso = servicios.filter((servicio) => servicio.estado === "En Curso").length;
-  const traslados = servicios.filter((servicio) => servicio.tipoServicio === "Traslado").length;
-  const ingresos = servicios.reduce((total, servicio) => total + totalServicio(servicio), 0);
 
   const serviciosFormateados = servicios.map((s) => ({
     ...s,
@@ -66,8 +51,8 @@ export default async function ServiciosPage() {
   }));
 
   return (
-    <DashboardLayout>
-      <div className="flex items-center justify-between flex-wrap gap-4">
+    <>
+    <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-4xl font-extrabold text-gray-800">
             Servicios
@@ -86,41 +71,7 @@ export default async function ServiciosPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-10">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Servicios Hoy</p>
-          <h2 className="text-4xl font-black mt-4 text-gray-800">
-            {totalServicios}
-          </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Registrados durante el día</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">En Curso Hoy</p>
-          <h2 className="text-4xl font-black mt-4 text-orange-500">
-            {enCurso}
-          </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Activos en este momento</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Traslados Hoy</p>
-          <h2 className="text-4xl font-black mt-4 text-blue-600">
-            {traslados}
-          </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Traslados del día</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <p className="text-gray-500 text-sm font-semibold">Ingresos Hoy</p>
-          <h2 className="text-3xl font-black mt-4 text-green-600">
-            S/. {ingresos.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </h2>
-          <p className="text-xs text-gray-400 mt-2 font-medium">Base + espera + camilla</p>
-        </div>
-      </div>
-
       <ServiciosList initialServicios={serviciosFormateados} />
-    </DashboardLayout>
+    </>
   );
 }

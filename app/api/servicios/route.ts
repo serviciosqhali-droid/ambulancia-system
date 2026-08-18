@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         email: body.email ? body.email.trim() : null,
         costo,
         metodoPago: body.metodoPago || "Yape",
-        estado: body.estado || "Cotización",
+        estado: body.estado || (body.tipoServicio === "Evento" ? "Por cotizar" : "Cotización"),
         fechaHora: body.fechaHora ? new Date(body.fechaHora) : null,
         direccionEvento: body.direccionEvento ? body.direccionEvento.trim() : null,
         descuento: body.descuento ? Number(body.descuento) : 0,

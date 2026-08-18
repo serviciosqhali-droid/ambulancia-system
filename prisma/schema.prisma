@@ -68,6 +68,7 @@ model Servicio {
   horaInicioTraslado2 DateTime?
   horaLlegadaDestino2 DateTime?
   horaTermino2        DateTime?
+  trasladosExtra     String?   // JSON con traslados adicionales (3+)
   minutosEspera      Int?      @default(0)
   costoEspera        Float?    @default(0)
   descuento          Float?    @default(0)
