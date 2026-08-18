@@ -380,14 +380,14 @@ export default function ServiciosList({ initialServicios }: Props) {
   }
 
   async function cambiarEstadoRapido(servicio: Servicio, nuevoEstado: string) {
+    if (!nuevoEstado || nuevoEstado === servicio.estado) return;
+
     try {
       const response = await fetch("/api/servicios/" + servicio.id, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...servicio,
           estado: nuevoEstado,
-          destinos: parseDestinos(servicio.destinos),
         }),
       });
 
